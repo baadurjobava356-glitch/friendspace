@@ -56,15 +56,6 @@ function SheetContent({
 }) {
   const contentRef = React.useRef<HTMLDivElement | null>(null)
 
-  React.useEffect(() => {
-    const node = contentRef.current
-    const hasTitle = !!node?.querySelector('[data-slot="sheet-title"], [id][data-radix-collection-item]')
-    const state = node?.getAttribute("data-state") ?? "unknown"
-    // #region agent log
-    fetch('http://127.0.0.1:7523/ingest/e98abe5e-1ecf-45e8-bcf9-9333b078fd84',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'5788ba'},body:JSON.stringify({sessionId:'5788ba',runId:'pre-fix',hypothesisId:'S1',location:'components/ui/sheet.tsx:61',message:'sheet_content_accessibility_probe',data:{hasTitle,state,side},timestamp:Date.now()})}).catch(()=>{});
-    // #endregion agent log
-  }, [children, side])
-
   return (
     <SheetPortal>
       <SheetOverlay />

@@ -2,9 +2,6 @@ import { Resend } from "resend"
 
 function getResendClient() {
   const apiKey = process.env.RESEND_API_KEY
-  // #region agent log
-  fetch('http://127.0.0.1:7523/ingest/e98abe5e-1ecf-45e8-bcf9-9333b078fd84',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'5788ba'},body:JSON.stringify({sessionId:'5788ba',runId:'pre-fix',hypothesisId:'H3',location:'lib/email/resend.ts:6',message:'resend_client_initialization_attempt',data:{hasApiKey:!!apiKey},timestamp:Date.now()})}).catch(()=>{});
-  // #endregion agent log
   if (!apiKey) {
     throw new Error("Missing RESEND_API_KEY")
   }

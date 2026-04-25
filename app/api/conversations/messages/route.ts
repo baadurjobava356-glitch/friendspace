@@ -56,6 +56,7 @@ export async function POST(req: Request) {
         messageType?: string
         fileUrl?: string | null
         fileName?: string | null
+        replyToId?: string | null
       }
     | null
 
@@ -64,6 +65,7 @@ export async function POST(req: Request) {
   const messageType = body?.messageType ?? "text"
   const fileUrl = body?.fileUrl ?? null
   const fileName = body?.fileName ?? null
+  const replyToId = body?.replyToId ?? null
 
   if (!conversationId) return NextResponse.json({ error: "Missing conversationId" }, { status: 400 })
   if (!content && !fileUrl) return NextResponse.json({ error: "Message is empty" }, { status: 400 })
@@ -80,7 +82,10 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 })
   }
 
-  const { data: message, error } = await admin
+  let message: any = null
+  let error: any = null
+
+  const insertWithReply = await admin
     .from("messages")
     .insert({
       conversation_id: conversationId,
@@ -89,9 +94,30 @@ export async function POST(req: Request) {
       message_type: messageType,
       file_url: fileUrl,
       file_name: fileName,
+      reply_to_id: replyToId,
     })
     .select()
     .single()
+
+  message = insertWithReply.data
+  error = insertWithReply.error
+
+  if (error && `${error.message ?? ""}`.toLowerCase().includes("reply_to_id")) {
+    const fallbackInsert = await admin
+      .from("messages")
+      .insert({
+        conversation_id: conversationId,
+        sender_id: user.id,
+        content,
+        message_type: messageType,
+        file_url: fileUrl,
+        file_name: fileName,
+      })
+      .select()
+      .single()
+    message = fallbackInsert.data
+    error = fallbackInsert.error
+  }
 
   if (error) return NextResponse.json({ error: error.message }, { status: 400 })
 

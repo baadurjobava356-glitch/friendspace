@@ -58,21 +58,6 @@ function DialogContent({
 }) {
   const contentRef = React.useRef<HTMLDivElement | null>(null)
 
-  React.useEffect(() => {
-    const node = contentRef.current
-    const labelledById = node?.getAttribute("aria-labelledby") ?? null
-    const describedById = node?.getAttribute("aria-describedby") ?? null
-    const hasTitle =
-      !!node?.querySelector('[data-slot="dialog-title"]') ||
-      (!!labelledById && typeof document !== "undefined" && !!document.getElementById(labelledById))
-    const hasDescription =
-      !!node?.querySelector('[data-slot="dialog-description"]') ||
-      (!!describedById && typeof document !== "undefined" && !!document.getElementById(describedById))
-    // #region agent log
-    fetch('http://127.0.0.1:7523/ingest/e98abe5e-1ecf-45e8-bcf9-9333b078fd84',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'5788ba'},body:JSON.stringify({sessionId:'5788ba',runId:'post-fix',hypothesisId:'D1',location:'components/ui/dialog.tsx:66',message:'dialog_content_accessibility_probe',data:{hasTitle,hasDescription,hasAriaLabel:!!ariaLabel,hasAriaDescribedBy:!!ariaDescribedBy,labelledById,describedById},timestamp:Date.now()})}).catch(()=>{});
-    // #endregion agent log
-  }, [children, ariaLabel, ariaDescribedBy])
-
   return (
     <DialogPortal data-slot="dialog-portal">
       <DialogOverlay />

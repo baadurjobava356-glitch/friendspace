@@ -90,26 +90,7 @@ export function FilesClient({
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid")
   const [dragActive, setDragActive] = useState(false)
   const [uploadFeedback, setUploadFeedback] = useState<UploadFeedback>({ status: "idle", message: "" })
-  const [debugStatus, setDebugStatus] = useState<string | null>(null)
   const supabase = createClient()
-
-  useEffect(() => {
-    let cancelled = false
-    fetch("/api/__debug?ping=files", { method: "GET" })
-      .then((r) => r.json().catch(() => ({})))
-      .then((b) => {
-        if (cancelled) return
-        const p = (b as any)?.debugLogPath
-        setDebugStatus(p ? `debug ok (${Array.isArray(p) ? p.join(", ") : p})` : "debug ok")
-      })
-      .catch((e) => {
-        if (cancelled) return
-        setDebugStatus(`debug failed (${e instanceof Error ? e.message : "unknown"})`)
-      })
-    return () => {
-      cancelled = true
-    }
-  }, [])
 
   function showFeedback(status: UploadStatus, message: string) {
     setUploadFeedback({ status, message })
@@ -147,10 +128,6 @@ export function FilesClient({
 
     for (const file of Array.from(fileList)) {
       try {
-        // #region agent log
-        fetch('/api/__debug',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:'885107',runId:'pre-fix',hypothesisId:'U2',location:'components/dashboard/files/files-client.tsx:134',message:'upload_client_start_file',data:{name:file.name,size:file.size,type:file.type},timestamp:Date.now()})}).catch(()=>{});
-        // #endregion agent log
-
         const formData = new FormData()
         formData.append("file", file)
 
@@ -170,9 +147,6 @@ export function FilesClient({
             }
           } catch { /* ignore parse errors */ }
           errors.push(errMsg)
-          // #region agent log
-          fetch('/api/__debug',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:'885107',runId:'pre-fix',hypothesisId:'U3',location:'components/dashboard/files/files-client.tsx:161',message:'upload_client_upload_failed',data:{name:file.name,status:response.status,errMsg},timestamp:Date.now()})}).catch(()=>{});
-          // #endregion agent log
           continue
         }
 
@@ -182,9 +156,6 @@ export function FilesClient({
         if (!pathname) {
           const debug = json?.debugLogPath
           errors.push(`No path returned for "${file.name}"${debug ? ` (debugLogPath: ${Array.isArray(debug) ? debug.join(", ") : debug})` : ""}`)
-          // #region agent log
-          fetch('/api/__debug',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:'885107',runId:'pre-fix',hypothesisId:'U3',location:'components/dashboard/files/files-client.tsx:171',message:'upload_client_missing_pathname',data:{name:file.name,jsonKeys:Object.keys(json||{})},timestamp:Date.now()})}).catch(()=>{});
-          // #endregion agent log
           continue
         }
 
@@ -203,9 +174,6 @@ export function FilesClient({
 
         if (dbError || !data) {
           errors.push(`Saved to storage but failed to record "${file.name}"`)
-          // #region agent log
-          fetch('/api/__debug',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:'885107',runId:'pre-fix',hypothesisId:'U4',location:'components/dashboard/files/files-client.tsx:192',message:'upload_client_db_insert_failed',data:{name:file.name,hasData:!!data,dbError:dbError?{message:dbError.message,code:dbError.code}:null},timestamp:Date.now()})}).catch(()=>{});
-          // #endregion agent log
           continue
         }
 
@@ -215,9 +183,6 @@ export function FilesClient({
         const msg = err instanceof Error ? err.message : "Unknown error"
         errors.push(`"${file.name}": ${msg}`)
         console.error("Upload failed:", err)
-        // #region agent log
-        fetch('/api/__debug',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sessionId:'885107',runId:'pre-fix',hypothesisId:'U5',location:'components/dashboard/files/files-client.tsx:205',message:'upload_client_exception',data:{name:file.name,msg},timestamp:Date.now()})}).catch(()=>{});
-        // #endregion agent log
       }
     }
 
@@ -313,11 +278,6 @@ export function FilesClient({
         >
           {feedbackIcon}
           <span>{uploadFeedback.message}</span>
-        </div>
-      )}
-      {debugStatus && (
-        <div className="text-[11px] text-muted-foreground mb-3">
-          {debugStatus}
         </div>
       )}
 

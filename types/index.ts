@@ -33,6 +33,7 @@ export interface Message {
   message_type: string
   file_url?: string | null
   file_name?: string | null
+  reply_to_id?: string | null
   is_edited: boolean
   created_at: string
   updated_at: string

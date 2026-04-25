@@ -101,18 +101,12 @@ export function SettingsClient({ user, initialProfile }: SettingsClientProps) {
     }
     setIsChangingPass(true)
     try {
-      // #region agent log
-      fetch('http://127.0.0.1:7523/ingest/e98abe5e-1ecf-45e8-bcf9-9333b078fd84',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'5788ba'},body:JSON.stringify({sessionId:'5788ba',runId:'pre-fix',hypothesisId:'H8',location:'components/dashboard/settings/settings-client.tsx:107',message:'settings_reset_submit',data:{origin:window.location.origin,path:window.location.pathname,hasUserEmail:!!user.email},timestamp:Date.now()})}).catch(()=>{});
-      // #endregion agent log
       const res = await fetch("/api/auth/forgot-password", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email: user.email }),
       })
       const body = await res.json().catch(() => null) as { error?: string } | null
-      // #region agent log
-      fetch('http://127.0.0.1:7523/ingest/e98abe5e-1ecf-45e8-bcf9-9333b078fd84',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'5788ba'},body:JSON.stringify({sessionId:'5788ba',runId:'pre-fix',hypothesisId:'H9',location:'components/dashboard/settings/settings-client.tsx:115',message:'settings_reset_response',data:{ok:res.ok,status:res.status,errorMessage:body?.error ?? null},timestamp:Date.now()})}).catch(()=>{});
-      // #endregion agent log
       if (!res.ok) {
         setPassMsg({ type: "error", text: body?.error ?? "Failed to send password reset email." })
       } else {

@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useRef, useCallback, useEffect } from "react"
+import Image from "next/image"
 import { createClient } from "@/lib/supabase/client"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -15,7 +16,7 @@ import {
 import {
   Plus, Send, Users, MessageCircle, Search, PhoneOff,
   Mic, MicOff, Volume2, VolumeX, Check, CheckCheck, Hash, PhoneCall,
-  Monitor, MonitorOff, Paperclip, X, Trash2,
+  Monitor, MonitorOff, Paperclip, X, Trash2, CornerUpLeft,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useConversationStore } from "@/store/conversation-store"
@@ -60,6 +61,8 @@ export function MessagesClient({
   const [groupName, setGroupName] = useState("")
   const [searchQuery, setSearchQuery] = useState("")
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
+  const [replyingTo, setReplyingTo] = useState<Message | null>(null)
+  const [sendError, setSendError] = useState<string | null>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const rootLayoutRef = useRef<HTMLDivElement>(null)
@@ -100,23 +103,23 @@ export function MessagesClient({
   } =
     useVoiceChannel(currentUserId, getDisplayName)
 
-  function getConversationName(conv: Conversation) {
+  const getConversationName = useCallback((conv: Conversation) => {
     if (conv.name) return conv.name
     const other = conv.conversation_participants.find((p) => p.user_id !== currentUserId)
     return allProfiles.find((p) => p.id === other?.user_id)?.display_name || "Unknown"
-  }
+  }, [allProfiles, currentUserId])
 
   function getProfileById(id: string) {
     return allProfiles.find((p) => p.id === id)
   }
 
-  function getPrivateCallChannel(conv: Conversation): VoiceChannel {
+  const getPrivateCallChannel = useCallback((conv: Conversation): VoiceChannel => {
     const label = conv.is_group ? conv.name || "Group" : getConversationName(conv)
     return {
       id: `vc-conv-${conv.id}`,
       name: `${label} Call`,
     }
-  }
+  }, [getConversationName])
 
   function getMessageStatus(message: Message): "sending" | "sent" | "delivered" | "read" {
     if (message.id.startsWith("temp-")) return "sending"
@@ -124,6 +127,12 @@ export function MessagesClient({
     const others = selectedConversation.conversation_participants.filter((p) => p.user_id !== currentUserId)
     const allRead = others.every((p) => p.last_read_at && p.last_read_at > message.created_at)
     return allRead ? "read" : "delivered"
+  }
+
+  function isImageAttachment(message: Message) {
+    if (message.message_type !== "file" || !message.file_url) return false
+    const value = `${message.file_name ?? ""} ${message.file_url}`.toLowerCase()
+    return [".png", ".jpg", ".jpeg", ".gif", ".webp", ".bmp", ".svg"].some((ext) => value.includes(ext))
   }
 
   async function createConversation() {
@@ -167,6 +176,7 @@ export function MessagesClient({
     e.preventDefault()
     if (!selectedConversation) return
     if (!newMessage.trim() && !selectedFile) return
+    setSendError(null)
     const content = newMessage.trim()
     const tempId = `temp-${Date.now()}`
     let uploadedPath: string | null = null
@@ -178,6 +188,7 @@ export function MessagesClient({
       const uploadResponse = await fetch("/api/upload", { method: "POST", body: formData })
       const uploadJson = await uploadResponse.json().catch(() => ({}))
       if (!uploadResponse.ok || !uploadJson?.pathname) {
+        setSendError((uploadJson?.error as string | undefined) ?? "Upload failed. Please try again.")
         return
       }
       uploadedPath = uploadJson.pathname as string
@@ -194,6 +205,7 @@ export function MessagesClient({
       message_type: messageType,
       file_url: uploadedPath,
       file_name: uploadedName,
+      reply_to_id: replyingTo?.id ?? null,
       is_edited: false,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
@@ -201,6 +213,7 @@ export function MessagesClient({
     addMessage(optimistic)
     setNewMessage("")
     setSelectedFile(null)
+    setReplyingTo(null)
     const response = await fetch("/api/conversations/messages", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -210,6 +223,7 @@ export function MessagesClient({
         messageType,
         fileUrl: uploadedPath,
         fileName: uploadedName,
+        replyToId: replyingTo?.id ?? null,
       }),
     })
     const json = await response.json().catch(() => null) as { message?: Message } | null
@@ -222,6 +236,7 @@ export function MessagesClient({
     } else {
       removeMessage(tempId)
       setNewMessage(messageContent)
+      setSendError((json as { error?: string } | null)?.error ?? "Failed to send message")
     }
   }
 
@@ -245,27 +260,7 @@ export function MessagesClient({
     if (!selectedConversation || !initialAutoCall || autoCallTriggeredRef.current) return
     autoCallTriggeredRef.current = true
     void joinVoiceChannel(getPrivateCallChannel(selectedConversation))
-  }, [selectedConversation, initialAutoCall, joinVoiceChannel])
-
-  useEffect(() => {
-    // #region agent log
-    fetch('http://127.0.0.1:7523/ingest/e98abe5e-1ecf-45e8-bcf9-9333b078fd84',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'5788ba'},body:JSON.stringify({sessionId:'5788ba',runId:'pre-fix',hypothesisId:'M0',location:'components/dashboard/messages/messages-client.tsx:258',message:'messages_client_mounted',data:{path:typeof window !== 'undefined' ? window.location.pathname : 'unknown',search:typeof window !== 'undefined' ? window.location.search : 'unknown'},timestamp:Date.now()})}).catch(()=>{});
-    // #endregion agent log
-  }, [])
-
-  useEffect(() => {
-    const rootRect = rootLayoutRef.current?.getBoundingClientRect()
-    const sidebarRect = sidebarRef.current?.getBoundingClientRect()
-    const sidebarScrollRect = sidebarScrollRef.current?.getBoundingClientRect()
-    const sidebarVoiceRect = sidebarVoiceMiniRef.current?.getBoundingClientRect()
-    const mainRect = mainPanelRef.current?.getBoundingClientRect()
-    const composerRect = composerRef.current?.getBoundingClientRect()
-    const rightVoiceRect = rightVoicePanelRef.current?.getBoundingClientRect()
-    const sidebarVoiceHidden = !!(sidebarVoiceRect && rootRect && sidebarVoiceRect.bottom > rootRect.bottom + 1)
-    // #region agent log
-    fetch('http://127.0.0.1:7523/ingest/e98abe5e-1ecf-45e8-bcf9-9333b078fd84',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'5788ba'},body:JSON.stringify({sessionId:'5788ba',runId:'pre-fix',hypothesisId:'M1',location:'components/dashboard/messages/messages-client.tsx:262',message:'messages_layout_probe',data:{messagesCount:messages.length,newMessageLength:newMessage.length,hasSelectedFile:!!selectedFile,activeVoiceChannel:voice.activeChannel?.id ?? null,participantsCount:voice.participants.length,rootHeight:rootRect?.height ?? null,sidebarHeight:sidebarRect?.height ?? null,sidebarScrollHeight:sidebarScrollRect?.height ?? null,sidebarVoiceTop:sidebarVoiceRect?.top ?? null,sidebarVoiceBottom:sidebarVoiceRect?.bottom ?? null,composerHeight:composerRect?.height ?? null,mainWidth:mainRect?.width ?? null,rightVoiceWidth:rightVoiceRect?.width ?? null,sidebarVoiceHidden},timestamp:Date.now()})}).catch(()=>{});
-    // #endregion agent log
-  }, [messages.length, newMessage.length, selectedFile, voice.activeChannel?.id, voice.participants.length])
+  }, [selectedConversation, initialAutoCall, joinVoiceChannel, getPrivateCallChannel])
 
   return (
     <TooltipProvider>
@@ -492,6 +487,9 @@ export function MessagesClient({
                   {messages.map((message, index) => {
                     const isOwn = message.sender_id === currentUserId
                     const sender = getProfileById(message.sender_id)
+                    const repliedMessage = message.reply_to_id
+                      ? messages.find((m) => m.id === message.reply_to_id)
+                      : null
                     const prevMsg = messages[index - 1]
                     const isGrouped = prevMsg && prevMsg.sender_id === message.sender_id &&
                       new Date(message.created_at).getTime() - new Date(prevMsg.created_at).getTime() < 60000
@@ -515,34 +513,83 @@ export function MessagesClient({
                           <div className={cn("rounded-2xl px-4 py-2 break-words relative group overflow-hidden",
                             isOwn ? "bg-primary text-primary-foreground rounded-br-sm" : "bg-muted rounded-bl-sm",
                             message.id.startsWith("temp-") && "opacity-60")}>
+                            <button
+                              type="button"
+                              aria-label="Reply to message"
+                              onClick={() => setReplyingTo(message)}
+                              className={cn(
+                                "absolute top-1/2 -translate-y-1/2 rounded p-1 opacity-0 transition-opacity group-hover:opacity-100",
+                                isOwn ? "-left-8" : "-right-8",
+                                "hover:bg-muted/40",
+                              )}
+                            >
+                              <CornerUpLeft className="w-3.5 h-3.5" />
+                            </button>
                             {isOwn && !message.id.startsWith("temp-") && (
                               <button
                                 type="button"
                                 aria-label="Delete message"
                                 onClick={() => deleteMessage(message.id)}
                                 className={cn(
-                                  "absolute -left-8 top-1/2 -translate-y-1/2 rounded p-1 opacity-0 transition-opacity group-hover:opacity-100",
+                                  "absolute -left-14 top-1/2 -translate-y-1/2 rounded p-1 opacity-0 transition-opacity group-hover:opacity-100",
                                   "hover:bg-destructive/10",
                                 )}
                               >
                                 <Trash2 className="w-3.5 h-3.5 text-destructive" />
                               </button>
                             )}
+                            {repliedMessage && (
+                              <div className={cn(
+                                "mb-2 rounded-lg border px-2 py-1 text-xs",
+                                isOwn ? "border-primary-foreground/30 bg-primary-foreground/10" : "border-border bg-background/60",
+                              )}>
+                                <p className="truncate opacity-80">
+                                  Replying to {repliedMessage.sender_id === currentUserId ? "yourself" : (getProfileById(repliedMessage.sender_id)?.display_name || "message")}
+                                </p>
+                                <p className="truncate">
+                                  {repliedMessage.content || repliedMessage.file_name || "Attachment"}
+                                </p>
+                              </div>
+                            )}
                             <p className="text-sm leading-relaxed break-all">{message.content}</p>
                             {message.message_type === "file" && message.file_url && (
-                              <a
-                                href={message.file_url.startsWith("http")
-                                  ? message.file_url
-                                  : `/api/file?pathname=${encodeURIComponent(message.file_url)}`}
-                                target="_blank"
-                                rel="noreferrer"
-                                className={cn(
-                                  "mt-2 inline-flex text-xs underline underline-offset-2",
-                                  isOwn ? "text-primary-foreground/90" : "text-primary",
+                              <>
+                                {isImageAttachment(message) && (
+                                  <a
+                                    href={message.file_url.startsWith("http")
+                                      ? message.file_url
+                                      : `/api/file?pathname=${encodeURIComponent(message.file_url)}`}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    className="mt-2 block"
+                                  >
+                                    <Image
+                                      src={message.file_url.startsWith("http")
+                                        ? message.file_url
+                                        : `/api/file?pathname=${encodeURIComponent(message.file_url)}`}
+                                      alt={message.file_name || "Uploaded image"}
+                                      className="max-h-52 w-auto rounded-lg object-cover"
+                                      width={320}
+                                      height={208}
+                                      loading="lazy"
+                                      unoptimized
+                                    />
+                                  </a>
                                 )}
-                              >
-                                {message.file_name || "Open attachment"}
-                              </a>
+                                <a
+                                  href={message.file_url.startsWith("http")
+                                    ? message.file_url
+                                    : `/api/file?pathname=${encodeURIComponent(message.file_url)}`}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  className={cn(
+                                    "mt-2 inline-flex text-xs underline underline-offset-2",
+                                    isOwn ? "text-primary-foreground/90" : "text-primary",
+                                  )}
+                                >
+                                  {message.file_name || "Open attachment"}
+                                </a>
+                              </>
                             )}
                           </div>
                           <div className={cn("flex items-center gap-1 mt-0.5 px-1", isOwn && "flex-row-reverse")}>
@@ -568,6 +615,21 @@ export function MessagesClient({
               </ScrollArea>
 
               <form ref={composerRef} onSubmit={sendMessage} className="p-4 border-t border-border bg-card shrink-0">
+                {replyingTo && (
+                  <div className="mb-2 flex items-center justify-between rounded-lg border bg-muted/50 px-3 py-2 text-xs">
+                    <div className="min-w-0">
+                      <p className="font-medium">Replying to {replyingTo.sender_id === currentUserId ? "yourself" : (getProfileById(replyingTo.sender_id)?.display_name || "message")}</p>
+                      <p className="truncate text-muted-foreground">{replyingTo.content || replyingTo.file_name || "Attachment"}</p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setReplyingTo(null)}
+                      className="text-muted-foreground hover:text-foreground"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                )}
                 {selectedFile && (
                   <div className="mb-2 flex items-center justify-between rounded-lg border bg-muted/50 px-3 py-2 text-xs">
                     <span className="truncate max-w-[85%]">{selectedFile.name}</span>
@@ -579,6 +641,11 @@ export function MessagesClient({
                       <X className="w-3.5 h-3.5" />
                     </button>
                   </div>
+                )}
+                {sendError && (
+                  <p className="mb-2 rounded-md bg-destructive/10 px-3 py-2 text-xs text-destructive">
+                    {sendError}
+                  </p>
                 )}
                 <div className="flex gap-2">
                   <input
