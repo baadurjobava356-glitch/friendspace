@@ -39,7 +39,9 @@ export async function GET(req: Request) {
     .order("created_at", { ascending: true })
     .limit(200)
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 400 })
+  if (error) {
+    return NextResponse.json({ error: error.message }, { status: 400 })
+  }
   return NextResponse.json({ messages: messages ?? [] })
 }
 

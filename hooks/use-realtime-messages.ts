@@ -13,27 +13,42 @@ export function useRealtimeMessages(conversationId: string | undefined, _current
 
     let isCancelled = false
     let previousCount = -1
+    const activeConversationId = conversationId
 
     async function loadMessages() {
-      const response = await fetch(`/api/conversations/messages?conversationId=${encodeURIComponent(conversationId)}`)
-      if (!response.ok) return
-      const json = await response.json().catch(() => null) as { messages?: Message[] } | null
-      if (isCancelled) return
-      const nextMessages = json?.messages ?? []
-      store.setMessages(nextMessages)
-      previousCount = nextMessages.length
+      try {
+        const response = await fetch(
+          `/api/conversations/messages?conversationId=${encodeURIComponent(activeConversationId)}`,
+        )
+        if (!response.ok) {
+          return
+        }
+        const json = await response.json().catch(() => null) as { messages?: Message[] } | null
+        if (isCancelled) return
+        const nextMessages = json?.messages ?? []
+        store.setMessages(nextMessages)
+        previousCount = nextMessages.length
+      } catch {
+      }
     }
 
     loadMessages()
     const interval = setInterval(async () => {
-      const response = await fetch(`/api/conversations/messages?conversationId=${encodeURIComponent(conversationId)}`)
-      if (!response.ok) return
-      const json = await response.json().catch(() => null) as { messages?: Message[] } | null
-      if (isCancelled) return
-      const nextMessages = json?.messages ?? []
-      if (nextMessages.length !== previousCount) {
-        store.setMessages(nextMessages)
-        previousCount = nextMessages.length
+      try {
+        const response = await fetch(
+          `/api/conversations/messages?conversationId=${encodeURIComponent(activeConversationId)}`,
+        )
+        if (!response.ok) {
+          return
+        }
+        const json = await response.json().catch(() => null) as { messages?: Message[] } | null
+        if (isCancelled) return
+        const nextMessages = json?.messages ?? []
+        if (nextMessages.length !== previousCount) {
+          store.setMessages(nextMessages)
+          previousCount = nextMessages.length
+        }
+      } catch {
       }
     }, 2000)
 
