@@ -16,7 +16,7 @@ import {
 import {
   Plus, Send, Users, MessageCircle, Search, PhoneOff,
   Mic, MicOff, Volume2, VolumeX, Check, CheckCheck, Hash, PhoneCall,
-  Monitor, MonitorOff, Paperclip, X, Trash2, CornerUpLeft,
+  Monitor, MonitorOff, Paperclip, X, Trash2, CornerUpLeft, PhoneIncoming,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useConversationStore } from "@/store/conversation-store"
@@ -31,6 +31,14 @@ interface MessagesClientProps {
   allProfiles: Profile[]
   initialSelectedConversationId?: string | null
   initialAutoCall?: boolean
+}
+
+interface IncomingCallInvite {
+  fromUserId: string
+  fromName: string
+  conversationId: string
+  channelId: string
+  channelName: string
 }
 
 const DEFAULT_VOICE_CHANNELS: VoiceChannel[] = [
@@ -63,6 +71,8 @@ export function MessagesClient({
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
   const [replyingTo, setReplyingTo] = useState<Message | null>(null)
   const [sendError, setSendError] = useState<string | null>(null)
+  const [incomingCall, setIncomingCall] = useState<IncomingCallInvite | null>(null)
+  const [ringingConversationIds, setRingingConversationIds] = useState<string[]>([])
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const rootLayoutRef = useRef<HTMLDivElement>(null)
@@ -74,6 +84,7 @@ export function MessagesClient({
   const rightVoicePanelRef = useRef<HTMLDivElement>(null)
   const initialized = useRef(false)
   const autoCallTriggeredRef = useRef(false)
+  const incomingCallTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   useEffect(() => {
     if (!initialized.current) {
@@ -89,6 +100,27 @@ export function MessagesClient({
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
   }, [messages])
+
+  useEffect(() => {
+    const channel = supabase
+      .channel(`pm-call:${currentUserId}`)
+      .on("broadcast", { event: "incoming-call" }, ({ payload }) => {
+        const invite = payload as IncomingCallInvite
+        if (!invite || invite.fromUserId === currentUserId) return
+        setIncomingCall(invite)
+        setRingingConversationIds((prev) =>
+          prev.includes(invite.conversationId) ? prev : [...prev, invite.conversationId],
+        )
+      })
+      .subscribe()
+
+    return () => {
+      if (incomingCallTimeoutRef.current) {
+        clearTimeout(incomingCallTimeoutRef.current)
+      }
+      void supabase.removeChannel(channel)
+    }
+  }, [currentUserId, supabase])
 
   useRealtimeMessages(selectedConversation?.id, currentUserId)
 
@@ -120,6 +152,37 @@ export function MessagesClient({
       name: `${label} Call`,
     }
   }, [getConversationName])
+
+  async function notifyPrivateCall(conv: Conversation, channel: VoiceChannel) {
+    const targets = conv.conversation_participants
+      .map((p) => p.user_id)
+      .filter((id) => id !== currentUserId)
+
+    await Promise.all(targets.map(async (targetUserId) => {
+      const callChannel = supabase.channel(`pm-call:${targetUserId}`)
+      await new Promise<void>((resolve) => {
+        const timeout = setTimeout(resolve, 1200)
+        callChannel.subscribe((status) => {
+          if (status === "SUBSCRIBED") {
+            clearTimeout(timeout)
+            resolve()
+          }
+        })
+      })
+      await callChannel.send({
+        type: "broadcast",
+        event: "incoming-call",
+        payload: {
+          fromUserId: currentUserId,
+          fromName: getDisplayName(currentUserId),
+          conversationId: conv.id,
+          channelId: channel.id,
+          channelName: channel.name,
+        } satisfies IncomingCallInvite,
+      })
+      void supabase.removeChannel(callChannel)
+    }))
+  }
 
   function getMessageStatus(message: Message): "sending" | "sent" | "delivered" | "read" {
     if (message.id.startsWith("temp-")) return "sending"
@@ -262,6 +325,35 @@ export function MessagesClient({
     void joinVoiceChannel(getPrivateCallChannel(selectedConversation))
   }, [selectedConversation, initialAutoCall, joinVoiceChannel, getPrivateCallChannel])
 
+  useEffect(() => {
+    if (!incomingCall) return
+    if (incomingCallTimeoutRef.current) clearTimeout(incomingCallTimeoutRef.current)
+    incomingCallTimeoutRef.current = setTimeout(() => {
+      setIncomingCall(null)
+      setRingingConversationIds((prev) => prev.filter((id) => id !== incomingCall.conversationId))
+    }, 30000)
+    return () => {
+      if (incomingCallTimeoutRef.current) clearTimeout(incomingCallTimeoutRef.current)
+    }
+  }, [incomingCall])
+
+  async function acceptIncomingCall() {
+    if (!incomingCall) return
+    const conv = conversations.find((c) => c.id === incomingCall.conversationId)
+    if (conv) {
+      setSelectedConversation(conv)
+    }
+    await joinVoiceChannel({ id: incomingCall.channelId, name: incomingCall.channelName })
+    setRingingConversationIds((prev) => prev.filter((id) => id !== incomingCall.conversationId))
+    setIncomingCall(null)
+  }
+
+  function dismissIncomingCall() {
+    if (!incomingCall) return
+    setRingingConversationIds((prev) => prev.filter((id) => id !== incomingCall.conversationId))
+    setIncomingCall(null)
+  }
+
   return (
     <TooltipProvider>
       <div ref={rootLayoutRef} className="flex h-[calc(100vh-3.5rem)] min-h-0 overflow-hidden">
@@ -355,6 +447,11 @@ export function MessagesClient({
                         {conv.is_group ? `${conv.conversation_participants.length} members` : "Direct message"}
                       </p>
                     </div>
+                    {ringingConversationIds.includes(conv.id) && (
+                      <Badge variant="outline" className="text-[10px] py-0 px-1 border-green-500/50 text-green-600 dark:text-green-400">
+                        Calling
+                      </Badge>
+                    )}
                   </button>
                 ))
               )}
@@ -454,6 +551,22 @@ export function MessagesClient({
         <div ref={mainPanelRef} className="flex-1 flex flex-col bg-background min-w-0 min-h-0 overflow-hidden">
           {selectedConversation ? (
             <>
+              {incomingCall && (
+                <div className="mx-4 mt-3 rounded-lg border border-green-500/40 bg-green-500/10 px-3 py-2">
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <PhoneIncoming className="w-4 h-4 text-green-600 shrink-0" />
+                      <p className="text-sm truncate">
+                        <span className="font-medium">{incomingCall.fromName}</span> is calling you
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-1 shrink-0">
+                      <Button size="sm" onClick={acceptIncomingCall}>Accept</Button>
+                      <Button size="sm" variant="ghost" onClick={dismissIncomingCall}>Dismiss</Button>
+                    </div>
+                  </div>
+                </div>
+              )}
               <div className="h-14 border-b border-border flex items-center justify-between px-4 bg-card shrink-0">
                 <div className="flex items-center gap-3">
                   <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
@@ -474,7 +587,12 @@ export function MessagesClient({
                   <TooltipTrigger asChild>
                     <Button size="icon" variant="ghost"
                       className="h-8 w-8 text-green-600 hover:text-green-700 hover:bg-green-500/10"
-                      onClick={() => selectedConversation && joinVoiceChannel(getPrivateCallChannel(selectedConversation))}>
+                      onClick={async () => {
+                        if (!selectedConversation) return
+                        const privateChannel = getPrivateCallChannel(selectedConversation)
+                        await joinVoiceChannel(privateChannel)
+                        await notifyPrivateCall(selectedConversation, privateChannel)
+                      }}>
                       <PhoneCall className="w-4 h-4" />
                     </Button>
                   </TooltipTrigger>
