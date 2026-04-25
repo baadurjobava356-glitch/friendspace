@@ -41,6 +41,12 @@ interface IncomingCallInvite {
   channelName: string
 }
 
+interface MessageContextMenuState {
+  message: Message
+  x: number
+  y: number
+}
+
 const DEFAULT_VOICE_CHANNELS: VoiceChannel[] = [
   { id: "vc-general", name: "General" },
   { id: "vc-gaming", name: "Gaming" },
@@ -73,6 +79,7 @@ export function MessagesClient({
   const [sendError, setSendError] = useState<string | null>(null)
   const [incomingCall, setIncomingCall] = useState<IncomingCallInvite | null>(null)
   const [ringingConversationIds, setRingingConversationIds] = useState<string[]>([])
+  const [messageContextMenu, setMessageContextMenu] = useState<MessageContextMenuState | null>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const rootLayoutRef = useRef<HTMLDivElement>(null)
@@ -113,6 +120,24 @@ export function MessagesClient({
   }, [messages])
 
   useEffect(() => {
+    if (!messageContextMenu) return
+
+    const handleClose = () => setMessageContextMenu(null)
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setMessageContextMenu(null)
+    }
+
+    window.addEventListener("click", handleClose)
+    window.addEventListener("scroll", handleClose, true)
+    window.addEventListener("keydown", handleKeyDown)
+    return () => {
+      window.removeEventListener("click", handleClose)
+      window.removeEventListener("scroll", handleClose, true)
+      window.removeEventListener("keydown", handleKeyDown)
+    }
+  }, [messageContextMenu])
+
+  useEffect(() => {
     const channel = supabase
       .channel(`pm-call:${currentUserId}`)
       .on("broadcast", { event: "incoming-call" }, ({ payload }) => {
@@ -133,7 +158,29 @@ export function MessagesClient({
     }
   }, [currentUserId, supabase])
 
-  useRealtimeMessages(selectedConversation?.id, currentUserId)
+  const { loadOlderMessages, hasOlderMessages, isLoadingOlder } = useRealtimeMessages(selectedConversation?.id, currentUserId)
+
+  useEffect(() => {
+    if (!selectedConversation) return
+    const end = messagesEndRef.current
+    const viewport = end?.closest("[data-radix-scroll-area-viewport]") as HTMLElement | null
+    if (!viewport) return
+
+    const onScroll = () => {
+      if (viewport.scrollTop <= 40 && hasOlderMessages && !isLoadingOlder) {
+        const previousHeight = viewport.scrollHeight
+        void loadOlderMessages().then(() => {
+          requestAnimationFrame(() => {
+            const newHeight = viewport.scrollHeight
+            viewport.scrollTop += newHeight - previousHeight
+          })
+        })
+      }
+    }
+
+    viewport.addEventListener("scroll", onScroll)
+    return () => viewport.removeEventListener("scroll", onScroll)
+  }, [selectedConversation, hasOlderMessages, isLoadingOlder, loadOlderMessages])
 
   const getDisplayName = useCallback(
     (id: string) => allProfiles.find((p) => p.id === id)?.display_name ?? "Unknown",
@@ -390,6 +437,15 @@ export function MessagesClient({
     setIncomingCall(null)
   }
 
+  function handleMessageContextMenu(event: React.MouseEvent, message: Message) {
+    event.preventDefault()
+    setMessageContextMenu({
+      message,
+      x: event.clientX,
+      y: event.clientY,
+    })
+  }
+
   return (
     <TooltipProvider>
       {incomingCall && (
@@ -417,6 +473,38 @@ export function MessagesClient({
               </Button>
             </div>
           </div>
+        </div>
+      )}
+      {messageContextMenu && (
+        <div
+          className="fixed z-[90] min-w-36 rounded-md border bg-card p-1 shadow-xl"
+          style={{ left: messageContextMenu.x, top: messageContextMenu.y }}
+          onClick={(e) => e.stopPropagation()}
+        >
+          <button
+            type="button"
+            className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-sm hover:bg-muted"
+            onClick={() => {
+              setReplyingTo(messageContextMenu.message)
+              setMessageContextMenu(null)
+            }}
+          >
+            <CornerUpLeft className="h-3.5 w-3.5" />
+            Reply
+          </button>
+          {messageContextMenu.message.sender_id === currentUserId && !messageContextMenu.message.id.startsWith("temp-") && (
+            <button
+              type="button"
+              className="flex w-full items-center gap-2 rounded px-2 py-1.5 text-left text-sm text-destructive hover:bg-destructive/10"
+              onClick={() => {
+                void deleteMessage(messageContextMenu.message.id)
+                setMessageContextMenu(null)
+              }}
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+              Delete
+            </button>
+          )}
         </div>
       )}
       <div ref={rootLayoutRef} className="flex h-[calc(100vh-3.5rem)] min-h-0 overflow-hidden">
@@ -678,6 +766,9 @@ export function MessagesClient({
                           <div className={cn("rounded-2xl px-4 py-2 break-words relative group overflow-hidden",
                             isOwn ? "bg-primary text-primary-foreground rounded-br-sm" : "bg-muted rounded-bl-sm",
                             message.id.startsWith("temp-") && "opacity-60")}>
+                            <div
+                              onContextMenu={(event) => handleMessageContextMenu(event, message)}
+                            >
                             {repliedMessage && (
                               <div className={cn(
                                 "mb-2 rounded-lg border px-2 py-1 text-xs",
@@ -733,31 +824,7 @@ export function MessagesClient({
                                 </a>
                               </>
                             )}
-                          </div>
-                          <div
-                            className={cn(
-                              "mt-1 flex items-center gap-1 px-1 opacity-0 transition-opacity pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto",
-                              isOwn && "justify-end",
-                            )}
-                          >
-                            <button
-                              type="button"
-                              aria-label="Reply to message"
-                              onClick={() => setReplyingTo(message)}
-                              className="inline-flex h-5 w-5 items-center justify-center rounded text-muted-foreground hover:bg-muted hover:text-foreground"
-                            >
-                              <CornerUpLeft className="w-3 h-3" />
-                            </button>
-                            {isOwn && !message.id.startsWith("temp-") && (
-                              <button
-                                type="button"
-                                aria-label="Delete message"
-                                onClick={() => deleteMessage(message.id)}
-                                className="inline-flex h-5 w-5 items-center justify-center rounded text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
-                              >
-                                <Trash2 className="w-3 h-3" />
-                              </button>
-                            )}
+                            </div>
                           </div>
                           <div className={cn("flex items-center gap-1 mt-0.5 px-1", isOwn && "flex-row-reverse")}>
                             <span className="text-[10px] text-muted-foreground">

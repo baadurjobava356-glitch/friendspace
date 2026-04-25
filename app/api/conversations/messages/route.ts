@@ -16,6 +16,11 @@ export async function GET(req: Request) {
 
   const url = new URL(req.url)
   const conversationId = url.searchParams.get("conversationId")
+  const before = url.searchParams.get("before")
+  const limitParam = Number(url.searchParams.get("limit") ?? "0")
+  const limit = Number.isFinite(limitParam) && limitParam > 0
+    ? Math.min(limitParam, 200)
+    : 100
   if (!conversationId) {
     return NextResponse.json({ error: "Missing conversationId" }, { status: 400 })
   }
@@ -32,17 +37,25 @@ export async function GET(req: Request) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 })
   }
 
-  const { data: messages, error } = await admin
+  let query = admin
     .from("messages")
     .select("*")
     .eq("conversation_id", conversationId)
-    .order("created_at", { ascending: true })
-    .limit(200)
+    .order("created_at", { ascending: false })
+    .limit(limit)
+
+  if (before) {
+    query = query.lt("created_at", before)
+  }
+
+  const { data: rawMessages, error } = await query
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 400 })
   }
-  return NextResponse.json({ messages: messages ?? [] })
+
+  const messages = (rawMessages ?? []).slice().reverse()
+  return NextResponse.json({ messages })
 }
 
 export async function POST(req: Request) {

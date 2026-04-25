@@ -10,6 +10,7 @@ interface ConversationState {
   addConversation: (conversation: Conversation) => void
   setSelectedConversation: (conversation: Conversation | null) => void
   setMessages: (messages: Message[]) => void
+  prependMessages: (messages: Message[]) => void
   addMessage: (message: Message) => void
   replaceOptimisticMessage: (tempId: string, message: Message) => void
   removeMessage: (id: string) => void
@@ -28,6 +29,12 @@ export const useConversationStore = create<ConversationState>((set) => ({
   setSelectedConversation: (conversation) =>
     set({ selectedConversation: conversation, messages: [], isTyping: {} }),
   setMessages: (messages) => set({ messages }),
+  prependMessages: (messages) =>
+    set((s) => {
+      const existingIds = new Set(s.messages.map((m) => m.id))
+      const toPrepend = messages.filter((m) => !existingIds.has(m.id))
+      return { messages: [...toPrepend, ...s.messages] }
+    }),
   addMessage: (message) =>
     set((s) => ({
       messages: s.messages.find((m) => m.id === message.id)
