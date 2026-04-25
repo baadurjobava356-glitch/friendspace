@@ -48,15 +48,31 @@ function SheetContent({
   className,
   children,
   side = 'right',
+  "aria-label": ariaLabel,
+  "aria-describedby": ariaDescribedBy,
   ...props
 }: React.ComponentProps<typeof SheetPrimitive.Content> & {
   side?: 'top' | 'right' | 'bottom' | 'left'
 }) {
+  const contentRef = React.useRef<HTMLDivElement | null>(null)
+
+  React.useEffect(() => {
+    const node = contentRef.current
+    const hasTitle = !!node?.querySelector('[data-slot="sheet-title"], [id][data-radix-collection-item]')
+    const state = node?.getAttribute("data-state") ?? "unknown"
+    // #region agent log
+    fetch('http://127.0.0.1:7523/ingest/e98abe5e-1ecf-45e8-bcf9-9333b078fd84',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'5788ba'},body:JSON.stringify({sessionId:'5788ba',runId:'pre-fix',hypothesisId:'S1',location:'components/ui/sheet.tsx:61',message:'sheet_content_accessibility_probe',data:{hasTitle,state,side},timestamp:Date.now()})}).catch(()=>{});
+    // #endregion agent log
+  }, [children, side])
+
   return (
     <SheetPortal>
       <SheetOverlay />
       <SheetPrimitive.Content
+        ref={contentRef}
         data-slot="sheet-content"
+        aria-label={ariaLabel}
+        aria-describedby={ariaDescribedBy}
         className={cn(
           'bg-background data-[state=open]:animate-in data-[state=closed]:animate-out fixed z-50 flex flex-col gap-4 shadow-lg transition ease-in-out data-[state=closed]:duration-300 data-[state=open]:duration-500',
           side === 'right' &&
@@ -71,6 +87,14 @@ function SheetContent({
         )}
         {...props}
       >
+        {!ariaLabel && (
+          <SheetPrimitive.Title className="sr-only">Sheet panel</SheetPrimitive.Title>
+        )}
+        {!ariaDescribedBy && (
+          <SheetPrimitive.Description className="sr-only">
+            Panel content
+          </SheetPrimitive.Description>
+        )}
         {children}
         <SheetPrimitive.Close className="ring-offset-background focus:ring-ring data-[state=open]:bg-secondary absolute top-4 right-4 rounded-xs opacity-70 transition-opacity hover:opacity-100 focus:ring-2 focus:ring-offset-2 focus:outline-hidden disabled:pointer-events-none">
           <XIcon className="size-4" />

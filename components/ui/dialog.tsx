@@ -50,21 +50,51 @@ function DialogContent({
   className,
   children,
   showCloseButton = true,
+  "aria-label": ariaLabel,
+  "aria-describedby": ariaDescribedBy,
   ...props
 }: React.ComponentProps<typeof DialogPrimitive.Content> & {
   showCloseButton?: boolean
 }) {
+  const contentRef = React.useRef<HTMLDivElement | null>(null)
+
+  React.useEffect(() => {
+    const node = contentRef.current
+    const labelledById = node?.getAttribute("aria-labelledby") ?? null
+    const describedById = node?.getAttribute("aria-describedby") ?? null
+    const hasTitle =
+      !!node?.querySelector('[data-slot="dialog-title"]') ||
+      (!!labelledById && typeof document !== "undefined" && !!document.getElementById(labelledById))
+    const hasDescription =
+      !!node?.querySelector('[data-slot="dialog-description"]') ||
+      (!!describedById && typeof document !== "undefined" && !!document.getElementById(describedById))
+    // #region agent log
+    fetch('http://127.0.0.1:7523/ingest/e98abe5e-1ecf-45e8-bcf9-9333b078fd84',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'5788ba'},body:JSON.stringify({sessionId:'5788ba',runId:'post-fix',hypothesisId:'D1',location:'components/ui/dialog.tsx:66',message:'dialog_content_accessibility_probe',data:{hasTitle,hasDescription,hasAriaLabel:!!ariaLabel,hasAriaDescribedBy:!!ariaDescribedBy,labelledById,describedById},timestamp:Date.now()})}).catch(()=>{});
+    // #endregion agent log
+  }, [children, ariaLabel, ariaDescribedBy])
+
   return (
     <DialogPortal data-slot="dialog-portal">
       <DialogOverlay />
       <DialogPrimitive.Content
+        ref={contentRef}
         data-slot="dialog-content"
+        aria-label={ariaLabel}
+        aria-describedby={ariaDescribedBy}
         className={cn(
           'bg-background data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 fixed top-[50%] left-[50%] z-50 grid w-full max-w-[calc(100%-2rem)] translate-x-[-50%] translate-y-[-50%] gap-4 rounded-lg border p-6 shadow-lg duration-200 sm:max-w-lg',
           className,
         )}
         {...props}
       >
+        {!ariaLabel && (
+          <DialogPrimitive.Title className="sr-only">Dialog panel</DialogPrimitive.Title>
+        )}
+        {!ariaDescribedBy && (
+          <DialogPrimitive.Description className="sr-only">
+            Dialog content
+          </DialogPrimitive.Description>
+        )}
         {children}
         {showCloseButton && (
           <DialogPrimitive.Close

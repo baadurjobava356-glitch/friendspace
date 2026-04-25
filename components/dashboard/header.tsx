@@ -13,7 +13,7 @@ import {
   Menu, Bell, LogOut, User as UserIcon, Settings, Users,
   MessageCircle, Calendar, FolderOpen, Home, Sun, Moon,
 } from "lucide-react"
-import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet"
 import type { User } from "@supabase/supabase-js"
 
 interface Profile { id: string; display_name: string | null; avatar_url: string | null }
@@ -66,6 +66,9 @@ export function DashboardHeader({ user, profile }: DashboardHeaderProps) {
             </Button>
           </SheetTrigger>
           <SheetContent side="left" className="w-64 p-0">
+            <SheetHeader className="sr-only">
+              <SheetTitle>Mobile navigation menu</SheetTitle>
+            </SheetHeader>
             <div className="p-4 border-b border-border flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center">

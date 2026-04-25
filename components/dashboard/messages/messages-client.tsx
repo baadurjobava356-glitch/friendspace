@@ -62,6 +62,13 @@ export function MessagesClient({
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const rootLayoutRef = useRef<HTMLDivElement>(null)
+  const sidebarRef = useRef<HTMLDivElement>(null)
+  const sidebarScrollRef = useRef<HTMLDivElement>(null)
+  const sidebarVoiceMiniRef = useRef<HTMLDivElement>(null)
+  const mainPanelRef = useRef<HTMLDivElement>(null)
+  const composerRef = useRef<HTMLFormElement>(null)
+  const rightVoicePanelRef = useRef<HTMLDivElement>(null)
   const initialized = useRef(false)
   const autoCallTriggeredRef = useRef(false)
 
@@ -240,11 +247,31 @@ export function MessagesClient({
     void joinVoiceChannel(getPrivateCallChannel(selectedConversation))
   }, [selectedConversation, initialAutoCall, joinVoiceChannel])
 
+  useEffect(() => {
+    // #region agent log
+    fetch('http://127.0.0.1:7523/ingest/e98abe5e-1ecf-45e8-bcf9-9333b078fd84',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'5788ba'},body:JSON.stringify({sessionId:'5788ba',runId:'pre-fix',hypothesisId:'M0',location:'components/dashboard/messages/messages-client.tsx:258',message:'messages_client_mounted',data:{path:typeof window !== 'undefined' ? window.location.pathname : 'unknown',search:typeof window !== 'undefined' ? window.location.search : 'unknown'},timestamp:Date.now()})}).catch(()=>{});
+    // #endregion agent log
+  }, [])
+
+  useEffect(() => {
+    const rootRect = rootLayoutRef.current?.getBoundingClientRect()
+    const sidebarRect = sidebarRef.current?.getBoundingClientRect()
+    const sidebarScrollRect = sidebarScrollRef.current?.getBoundingClientRect()
+    const sidebarVoiceRect = sidebarVoiceMiniRef.current?.getBoundingClientRect()
+    const mainRect = mainPanelRef.current?.getBoundingClientRect()
+    const composerRect = composerRef.current?.getBoundingClientRect()
+    const rightVoiceRect = rightVoicePanelRef.current?.getBoundingClientRect()
+    const sidebarVoiceHidden = !!(sidebarVoiceRect && rootRect && sidebarVoiceRect.bottom > rootRect.bottom + 1)
+    // #region agent log
+    fetch('http://127.0.0.1:7523/ingest/e98abe5e-1ecf-45e8-bcf9-9333b078fd84',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'5788ba'},body:JSON.stringify({sessionId:'5788ba',runId:'pre-fix',hypothesisId:'M1',location:'components/dashboard/messages/messages-client.tsx:262',message:'messages_layout_probe',data:{messagesCount:messages.length,newMessageLength:newMessage.length,hasSelectedFile:!!selectedFile,activeVoiceChannel:voice.activeChannel?.id ?? null,participantsCount:voice.participants.length,rootHeight:rootRect?.height ?? null,sidebarHeight:sidebarRect?.height ?? null,sidebarScrollHeight:sidebarScrollRect?.height ?? null,sidebarVoiceTop:sidebarVoiceRect?.top ?? null,sidebarVoiceBottom:sidebarVoiceRect?.bottom ?? null,composerHeight:composerRect?.height ?? null,mainWidth:mainRect?.width ?? null,rightVoiceWidth:rightVoiceRect?.width ?? null,sidebarVoiceHidden},timestamp:Date.now()})}).catch(()=>{});
+    // #endregion agent log
+  }, [messages.length, newMessage.length, selectedFile, voice.activeChannel?.id, voice.participants.length])
+
   return (
     <TooltipProvider>
-      <div className="flex h-[calc(100vh-3.5rem)]">
+      <div ref={rootLayoutRef} className="flex h-[calc(100vh-3.5rem)] min-h-0 overflow-hidden">
         {/* Sidebar */}
-        <div className="w-72 border-r border-border flex flex-col bg-card shrink-0">
+        <div ref={sidebarRef} className="w-72 border-r border-border flex flex-col bg-card shrink-0 min-h-0">
           <div className="p-4 border-b border-border">
             <div className="flex items-center justify-between mb-1">
               <h2 className="font-semibold text-lg">Messages</h2>
@@ -307,7 +334,8 @@ export function MessagesClient({
             </div>
           </div>
 
-          <ScrollArea className="flex-1">
+          <ScrollArea className="flex-1 min-h-0">
+            <div ref={sidebarScrollRef}>
             <div className="p-2 space-y-1">
               {conversations.length === 0 ? (
                 <div className="text-center py-8 text-muted-foreground">
@@ -360,10 +388,11 @@ export function MessagesClient({
                 </button>
               ))}
             </div>
+            </div>
           </ScrollArea>
 
           {voice.activeChannel && (
-            <div className="border-t border-border bg-muted/50 p-3">
+            <div ref={sidebarVoiceMiniRef} className="border-t border-border bg-muted/50 p-3 shrink-0">
               <div className="flex items-center justify-between mb-2">
                 <div className="flex items-center gap-2 min-w-0">
                   <div className="w-2 h-2 rounded-full bg-green-500 shrink-0" />
@@ -427,7 +456,7 @@ export function MessagesClient({
         </div>
 
         {/* Main chat */}
-        <div className="flex-1 flex flex-col bg-background min-w-0">
+        <div ref={mainPanelRef} className="flex-1 flex flex-col bg-background min-w-0 min-h-0 overflow-hidden">
           {selectedConversation ? (
             <>
               <div className="h-14 border-b border-border flex items-center justify-between px-4 bg-card shrink-0">
@@ -483,7 +512,7 @@ export function MessagesClient({
                               {sender?.display_name || "Unknown"}
                             </p>
                           )}
-                          <div className={cn("rounded-2xl px-4 py-2 break-words relative group",
+                          <div className={cn("rounded-2xl px-4 py-2 break-words relative group overflow-hidden",
                             isOwn ? "bg-primary text-primary-foreground rounded-br-sm" : "bg-muted rounded-bl-sm",
                             message.id.startsWith("temp-") && "opacity-60")}>
                             {isOwn && !message.id.startsWith("temp-") && (
@@ -499,7 +528,7 @@ export function MessagesClient({
                                 <Trash2 className="w-3.5 h-3.5 text-destructive" />
                               </button>
                             )}
-                            <p className="text-sm leading-relaxed">{message.content}</p>
+                            <p className="text-sm leading-relaxed break-all">{message.content}</p>
                             {message.message_type === "file" && message.file_url && (
                               <a
                                 href={message.file_url.startsWith("http")
@@ -538,7 +567,7 @@ export function MessagesClient({
                 </div>
               </ScrollArea>
 
-              <form onSubmit={sendMessage} className="p-4 border-t border-border bg-card shrink-0">
+              <form ref={composerRef} onSubmit={sendMessage} className="p-4 border-t border-border bg-card shrink-0">
                 {selectedFile && (
                   <div className="mb-2 flex items-center justify-between rounded-lg border bg-muted/50 px-3 py-2 text-xs">
                     <span className="truncate max-w-[85%]">{selectedFile.name}</span>
@@ -594,7 +623,7 @@ export function MessagesClient({
 
         {/* Voice participants panel */}
         {voice.activeChannel && voice.participants.length > 0 && (
-          <div className="w-52 border-l border-border bg-card flex flex-col shrink-0">
+          <div ref={rightVoicePanelRef} className="w-52 border-l border-border bg-card flex flex-col shrink-0">
             <div className="p-3 border-b border-border">
               <div className="flex items-center gap-2">
                 <Volume2 className="w-4 h-4 text-green-500" />

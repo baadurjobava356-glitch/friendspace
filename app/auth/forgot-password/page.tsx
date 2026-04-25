@@ -19,12 +19,18 @@ export default function ForgotPasswordPage() {
     setError(null)
     setSuccess(null)
     setIsLoading(true)
+    // #region agent log
+    fetch('http://127.0.0.1:7523/ingest/e98abe5e-1ecf-45e8-bcf9-9333b078fd84',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'5788ba'},body:JSON.stringify({sessionId:'5788ba',runId:'pre-fix',hypothesisId:'H6',location:'app/auth/forgot-password/page.tsx:25',message:'forgot_password_client_submit',data:{origin:window.location.origin,path:window.location.pathname},timestamp:Date.now()})}).catch(()=>{});
+    // #endregion agent log
     const res = await fetch("/api/auth/forgot-password", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ email }),
     })
     const body = await res.json().catch(() => null) as { error?: string } | null
+    // #region agent log
+    fetch('http://127.0.0.1:7523/ingest/e98abe5e-1ecf-45e8-bcf9-9333b078fd84',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'5788ba'},body:JSON.stringify({sessionId:'5788ba',runId:'pre-fix',hypothesisId:'H7',location:'app/auth/forgot-password/page.tsx:35',message:'forgot_password_client_response',data:{ok:res.ok,status:res.status,errorMessage:body?.error ?? null},timestamp:Date.now()})}).catch(()=>{});
+    // #endregion agent log
     if (!res.ok) {
       setError(body?.error ?? "Failed to send reset email")
       setIsLoading(false)
