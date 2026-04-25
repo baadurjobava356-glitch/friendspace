@@ -81,6 +81,7 @@ export function MessagesClient({
   const [ringingConversationIds, setRingingConversationIds] = useState<string[]>([])
   const [messageContextMenu, setMessageContextMenu] = useState<MessageContextMenuState | null>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
+  const messagesViewportRef = useRef<HTMLDivElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const rootLayoutRef = useRef<HTMLDivElement>(null)
   const sidebarRef = useRef<HTMLDivElement>(null)
@@ -107,7 +108,8 @@ export function MessagesClient({
   useEffect(() => {
     const end = messagesEndRef.current
     if (!end) return
-    const viewport = end.closest("[data-radix-scroll-area-viewport]") as HTMLElement | null
+    const viewport = messagesViewportRef.current
+      ?? (end.closest("[data-radix-scroll-area-viewport]") as HTMLElement | null)
     if (!viewport) {
       end.scrollIntoView({ behavior: "smooth" })
       return
@@ -162,8 +164,7 @@ export function MessagesClient({
 
   useEffect(() => {
     if (!selectedConversation) return
-    const end = messagesEndRef.current
-    const viewport = end?.closest("[data-radix-scroll-area-viewport]") as HTMLElement | null
+    const viewport = messagesViewportRef.current
     if (!viewport) return
 
     const onScroll = () => {
@@ -450,26 +451,35 @@ export function MessagesClient({
     <TooltipProvider>
       {incomingCall && (
         <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/40 p-4">
-          <div className="w-full max-w-sm rounded-2xl border bg-card p-5 shadow-2xl">
-            <div className="mb-4 flex items-center gap-3">
-              <div className="relative flex h-11 w-11 items-center justify-center rounded-full bg-green-500/15">
-                <PhoneIncoming className="h-5 w-5 text-green-600" />
-                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-green-500/20" />
+          <div className="w-full max-w-[320px] rounded-xl border border-border bg-card p-6 shadow-2xl">
+            <div className="flex flex-col items-center">
+              <div className="relative mb-4">
+                <div className="h-24 w-24 rounded-full bg-amber-500 p-1 shadow-lg">
+                  <div className="flex h-full w-full items-center justify-center rounded-full border-2 border-card bg-amber-400 text-card">
+                    <span className="text-3xl font-semibold">
+                      {(incomingCall.fromName?.charAt(0) || "?").toUpperCase()}
+                    </span>
+                  </div>
+                </div>
+                <span className="absolute inset-0 animate-ping rounded-full bg-amber-400/20" />
               </div>
-              <div className="min-w-0">
-                <p className="text-sm text-muted-foreground">Incoming call</p>
-                <p className="truncate font-semibold">{incomingCall.fromName}</p>
-              </div>
+              <p className="max-w-full truncate text-3xl font-semibold">{incomingCall.fromName}</p>
+              <p className="mb-6 text-xl text-muted-foreground">Incoming Call...</p>
             </div>
-            <p className="mb-4 text-sm text-muted-foreground">
-              {incomingCall.channelName}
-            </p>
-            <div className="flex items-center justify-end gap-2">
-              <Button size="sm" variant="ghost" onClick={dismissIncomingCall}>
-                Decline
+            <div className="flex items-center justify-center gap-8">
+              <Button
+                type="button"
+                onClick={dismissIncomingCall}
+                className="h-16 w-16 rounded-full bg-red-500 p-0 text-white hover:bg-red-600"
+              >
+                <X className="h-7 w-7" />
               </Button>
-              <Button size="sm" onClick={acceptIncomingCall}>
-                Answer
+              <Button
+                type="button"
+                onClick={acceptIncomingCall}
+                className="h-16 w-16 rounded-full bg-green-500 p-0 text-white hover:bg-green-600"
+              >
+                <PhoneCall className="h-7 w-7" />
               </Button>
             </div>
           </div>
@@ -735,8 +745,12 @@ export function MessagesClient({
                 </Tooltip>
               </div>
 
-              <ScrollArea className="flex-1 px-4 py-2" type="always">
-                <div className="space-y-0.5 pb-2">
+              <div
+                ref={messagesViewportRef}
+                className="flex-1 overflow-y-scroll px-4 py-2 pr-3"
+                style={{ scrollbarGutter: "stable" }}
+              >
+                <div className="space-y-0.5 pb-2 min-h-full">
                   {messages.map((message, index) => {
                     const isOwn = message.sender_id === currentUserId
                     const sender = getProfileById(message.sender_id)
@@ -749,7 +763,11 @@ export function MessagesClient({
                     const status = isOwn ? getMessageStatus(message) : null
 
                     return (
-                      <div key={message.id} className={cn("flex gap-2", isOwn ? "justify-end" : "justify-start", isGrouped ? "mt-0.5" : "mt-3")}>
+                      <div
+                        key={message.id}
+                        onContextMenu={(event) => handleMessageContextMenu(event, message)}
+                        className={cn("flex gap-2", isOwn ? "justify-end" : "justify-start", isGrouped ? "mt-0.5" : "mt-3")}
+                      >
                         {!isOwn && (
                           <div className={cn("w-8 h-8 rounded-full shrink-0 mt-auto", isGrouped && "invisible")}>
                             <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-xs font-medium">
@@ -764,7 +782,6 @@ export function MessagesClient({
                             </p>
                           )}
                           <div
-                            onContextMenu={(event) => handleMessageContextMenu(event, message)}
                             className={cn("rounded-2xl px-4 py-2 break-words relative group overflow-hidden",
                             isOwn ? "bg-primary text-primary-foreground rounded-br-sm" : "bg-muted rounded-bl-sm",
                             message.id.startsWith("temp-") && "opacity-60")}
@@ -845,7 +862,7 @@ export function MessagesClient({
 
                   <div ref={messagesEndRef} />
                 </div>
-              </ScrollArea>
+              </div>
 
               <form ref={composerRef} onSubmit={sendMessage} className="p-4 border-t border-border bg-card shrink-0">
                 {replyingTo && (
