@@ -735,7 +735,7 @@ export function MessagesClient({
                 </Tooltip>
               </div>
 
-              <ScrollArea className="flex-1 px-4 py-2">
+              <ScrollArea className="flex-1 px-4 py-2" type="always">
                 <div className="space-y-0.5 pb-2">
                   {messages.map((message, index) => {
                     const isOwn = message.sender_id === currentUserId
@@ -763,12 +763,12 @@ export function MessagesClient({
                               {sender?.display_name || "Unknown"}
                             </p>
                           )}
-                          <div className={cn("rounded-2xl px-4 py-2 break-words relative group overflow-hidden",
+                          <div
+                            onContextMenu={(event) => handleMessageContextMenu(event, message)}
+                            className={cn("rounded-2xl px-4 py-2 break-words relative group overflow-hidden",
                             isOwn ? "bg-primary text-primary-foreground rounded-br-sm" : "bg-muted rounded-bl-sm",
-                            message.id.startsWith("temp-") && "opacity-60")}>
-                            <div
-                              onContextMenu={(event) => handleMessageContextMenu(event, message)}
-                            >
+                            message.id.startsWith("temp-") && "opacity-60")}
+                          >
                             {repliedMessage && (
                               <div className={cn(
                                 "mb-2 rounded-lg border px-2 py-1 text-xs",
@@ -824,7 +824,6 @@ export function MessagesClient({
                                 </a>
                               </>
                             )}
-                            </div>
                           </div>
                           <div className={cn("flex items-center gap-1 mt-0.5 px-1", isOwn && "flex-row-reverse")}>
                             <span className="text-[10px] text-muted-foreground">
