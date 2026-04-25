@@ -98,7 +98,18 @@ export function MessagesClient({
   }, [initialConversations, initialSelectedConversationId, setConversations, setSelectedConversation])
 
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
+    const end = messagesEndRef.current
+    if (!end) return
+    const viewport = end.closest("[data-radix-scroll-area-viewport]") as HTMLElement | null
+    if (!viewport) {
+      end.scrollIntoView({ behavior: "smooth" })
+      return
+    }
+    const distanceFromBottom = viewport.scrollHeight - viewport.scrollTop - viewport.clientHeight
+    const isNearBottom = distanceFromBottom < 120
+    if (isNearBottom) {
+      end.scrollIntoView({ behavior: "smooth" })
+    }
   }, [messages])
 
   useEffect(() => {
@@ -723,7 +734,12 @@ export function MessagesClient({
                               </>
                             )}
                           </div>
-                          <div className={cn("mt-1 flex items-center gap-1 px-1", isOwn && "justify-end")}>
+                          <div
+                            className={cn(
+                              "mt-1 flex items-center gap-1 px-1 opacity-0 transition-opacity pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto",
+                              isOwn && "justify-end",
+                            )}
+                          >
                             <button
                               type="button"
                               aria-label="Reply to message"
