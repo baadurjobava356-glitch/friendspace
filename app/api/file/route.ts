@@ -1,5 +1,5 @@
 import { type NextRequest, NextResponse } from "next/server"
-import { get } from "@vercel/blob"
+import { createAdminClient } from "@/lib/supabase/admin"
 
 export async function GET(request: NextRequest) {
   try {
@@ -9,32 +9,15 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Missing pathname" }, { status: 400 })
     }
 
-    const result = await get(pathname, {
-      access: "private",
-      ifNoneMatch: request.headers.get("if-none-match") ?? undefined,
-    })
+    const bucket = process.env.MINI_DISCORD_STORAGE_BUCKET ?? "discord-files"
+    const admin = createAdminClient()
+    const { data, error } = await admin.storage.from(bucket).createSignedUrl(pathname, 120)
 
-    if (!result) {
+    if (error || !data?.signedUrl) {
       return new NextResponse("Not found", { status: 404 })
     }
 
-    if (result.statusCode === 304) {
-      return new NextResponse(null, {
-        status: 304,
-        headers: {
-          ETag: result.blob.etag,
-          "Cache-Control": "private, no-cache",
-        },
-      })
-    }
-
-    return new NextResponse(result.stream, {
-      headers: {
-        "Content-Type": result.blob.contentType,
-        ETag: result.blob.etag,
-        "Cache-Control": "private, no-cache",
-      },
-    })
+    return NextResponse.redirect(data.signedUrl)
   } catch (error) {
     console.error("Error serving file:", error)
     return NextResponse.json({ error: "Failed to serve file" }, { status: 500 })

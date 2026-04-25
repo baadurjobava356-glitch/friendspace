@@ -15,6 +15,14 @@ export async function POST(req: Request) {
     .eq("id", requestId)
     .eq("receiver_id", user.id) // only the receiver can accept
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 400 })
+  if (error) {
+    if (error.message.includes("does not exist")) {
+      return NextResponse.json(
+        { error: "Friends feature is not initialized yet. Please run database migrations." },
+        { status: 503 }
+      )
+    }
+    return NextResponse.json({ error: error.message }, { status: 400 })
+  }
   return NextResponse.json({ success: true })
 }

@@ -78,8 +78,12 @@ export function SettingsClient({ user, initialProfile }: SettingsClientProps) {
     setProfileMsg(null)
     const { error } = await supabase
       .from("profiles")
-      .update({ display_name: profile.displayName, bio: profile.bio, status: profile.status })
-      .eq("id", user.id)
+      .upsert({
+        id: user.id,
+        display_name: profile.displayName,
+        bio: profile.bio,
+        status: profile.status,
+      })
     setProfileMsg(error
       ? { type: "error", text: "Failed to save profile. Please try again." }
       : { type: "success", text: "Profile saved successfully!" }

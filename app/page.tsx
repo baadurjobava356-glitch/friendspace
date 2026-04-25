@@ -88,6 +88,9 @@ export default function HomePage() {
                 <ArrowRight className="w-4 h-4 ml-2" />
               </Link>
             </Button>
+            <Button size="lg" variant="secondary" asChild className="w-full sm:w-auto">
+              <Link href="/discord">Open Mini Discord MVP</Link>
+            </Button>
             <Button size="lg" variant="outline" asChild className="w-full sm:w-auto">
               <Link href="/auth/login">Sign in to your account</Link>
             </Button>

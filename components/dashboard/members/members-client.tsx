@@ -57,6 +57,34 @@ export function MembersClient({ currentUserId, allProfiles }: MembersClientProps
     router.refresh()
   }
 
+  async function startConversation(targetUserId: string) {
+    setLoadingIds((s) => new Set(s).add(`dm:${targetUserId}`))
+    try {
+      const res = await fetch("/api/conversations/direct", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ targetUserId }),
+      })
+      const body = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        console.error("Failed to start conversation:", body?.error || "Unknown error")
+        return
+      }
+      const conversationId = body?.conversationId as string | undefined
+      if (conversationId) {
+        router.push(`/dashboard/messages?conversation=${conversationId}`)
+      } else {
+        router.push("/dashboard/messages")
+      }
+    } finally {
+      setLoadingIds((s) => {
+        const n = new Set(s)
+        n.delete(`dm:${targetUserId}`)
+        return n
+      })
+    }
+  }
+
   async function acceptRequest(requestId: string) {
     setLoadingIds((s) => new Set(s).add(requestId))
     await fetch("/api/friends/accept", {
@@ -135,6 +163,7 @@ export function MembersClient({ currentUserId, allProfiles }: MembersClientProps
                 {filtered.map((member) => {
                   const status = getStatusForUser(member.id)
                   const isLoading = loadingIds.has(member.id)
+                  const isDmLoading = loadingIds.has(`dm:${member.id}`)
                   const pendingRequest = friendRequests.find((r) => r.sender_id === member.id)
 
                   return (
@@ -200,11 +229,18 @@ export function MembersClient({ currentUserId, allProfiles }: MembersClientProps
                             </>
                           )}
                           {status === "none" && (
-                            <Button size="sm" className="flex-1 text-xs"
-                              disabled={isLoading}
-                              onClick={() => sendRequest(member.id)}>
-                              <UserPlus className="w-3.5 h-3.5 mr-1.5" />Add Friend
-                            </Button>
+                            <>
+                              <Button variant="outline" size="sm" className="flex-1 text-xs"
+                                disabled={isDmLoading}
+                                onClick={() => startConversation(member.id)}>
+                                <MessageCircle className="w-3.5 h-3.5 mr-1.5" />Chat
+                              </Button>
+                              <Button size="sm" className="flex-1 text-xs"
+                                disabled={isLoading}
+                                onClick={() => sendRequest(member.id)}>
+                                <UserPlus className="w-3.5 h-3.5 mr-1.5" />Add Friend
+                              </Button>
+                            </>
                           )}
                         </div>
                       </CardContent>

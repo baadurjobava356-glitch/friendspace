@@ -15,7 +15,7 @@ import {
 import {
   Plus, Send, Users, MessageCircle, Search, PhoneOff,
   Mic, MicOff, Volume2, VolumeX, Check, CheckCheck, Hash, PhoneCall,
-  Monitor, MonitorOff,
+  Monitor, MonitorOff, Paperclip, X, Trash2,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useConversationStore } from "@/store/conversation-store"
@@ -28,6 +28,7 @@ interface MessagesClientProps {
   currentUserId: string
   initialConversations: Conversation[]
   allProfiles: Profile[]
+  initialSelectedConversationId?: string | null
 }
 
 const DEFAULT_VOICE_CHANNELS: VoiceChannel[] = [
@@ -36,11 +37,16 @@ const DEFAULT_VOICE_CHANNELS: VoiceChannel[] = [
   { id: "vc-chill", name: "Chill Zone" },
 ]
 
-export function MessagesClient({ currentUserId, initialConversations, allProfiles }: MessagesClientProps) {
+export function MessagesClient({
+  currentUserId,
+  initialConversations,
+  allProfiles,
+  initialSelectedConversationId,
+}: MessagesClientProps) {
   const supabase = createClient()
 
   const {
-    conversations, selectedConversation, messages, isTyping,
+    conversations, selectedConversation, messages,
     setConversations, addConversation, setSelectedConversation,
     addMessage, replaceOptimisticMessage, removeMessage, updateConversationTimestamp,
   } = useConversationStore()
@@ -51,29 +57,37 @@ export function MessagesClient({ currentUserId, initialConversations, allProfile
   const [selectedUsers, setSelectedUsers] = useState<string[]>([])
   const [groupName, setGroupName] = useState("")
   const [searchQuery, setSearchQuery] = useState("")
-  const typingTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const [selectedFile, setSelectedFile] = useState<File | null>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
   const initialized = useRef(false)
 
   useEffect(() => {
     if (!initialized.current) {
       setConversations(initialConversations)
+      if (initialSelectedConversationId) {
+        const selected = initialConversations.find((c) => c.id === initialSelectedConversationId) ?? null
+        if (selected) setSelectedConversation(selected)
+      }
       initialized.current = true
     }
-  }, [])
+  }, [initialConversations, initialSelectedConversationId, setConversations, setSelectedConversation])
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
   }, [messages])
 
-  const { broadcastTyping } = useRealtimeMessages(selectedConversation?.id, currentUserId)
+  useRealtimeMessages(selectedConversation?.id, currentUserId)
 
   const getDisplayName = useCallback(
     (id: string) => allProfiles.find((p) => p.id === id)?.display_name ?? "Unknown",
     [allProfiles]
   )
 
-  const { joinVoiceChannel, leaveVoiceChannel, toggleMute, toggleDeafen, toggleScreenShare } =
+  const {
+    joinVoiceChannel, leaveVoiceChannel, toggleMute, toggleDeafen, toggleScreenShare,
+    getRemoteScreenStream, getLocalScreenStream, screenShareVersion,
+  } =
     useVoiceChannel(currentUserId, getDisplayName)
 
   function getConversationName(conv: Conversation) {
@@ -96,6 +110,23 @@ export function MessagesClient({ currentUserId, initialConversations, allProfile
 
   async function createConversation() {
     if (selectedUsers.length === 0) return
+    if (selectedUsers.length === 1) {
+      const response = await fetch("/api/conversations/direct", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ targetUserId: selectedUsers[0] }),
+      })
+      const json = await response.json().catch(() => null) as { conversation?: Conversation } | null
+      if (response.ok && json?.conversation) {
+        addConversation(json.conversation)
+        setSelectedConversation(json.conversation)
+      }
+      setIsCreating(false)
+      setSelectedUsers([])
+      setGroupName("")
+      return
+    }
+
     const isGroup = selectedUsers.length > 1
     const { data: conversation, error } = await supabase
       .from("conversations")
@@ -116,48 +147,76 @@ export function MessagesClient({ currentUserId, initialConversations, allProfile
 
   async function sendMessage(e: React.FormEvent) {
     e.preventDefault()
-    if (!newMessage.trim() || !selectedConversation) return
+    if (!selectedConversation) return
+    if (!newMessage.trim() && !selectedFile) return
     const content = newMessage.trim()
     const tempId = `temp-${Date.now()}`
+    let uploadedPath: string | null = null
+    let uploadedName: string | null = null
+
+    if (selectedFile) {
+      const formData = new FormData()
+      formData.append("file", selectedFile)
+      const uploadResponse = await fetch("/api/upload", { method: "POST", body: formData })
+      const uploadJson = await uploadResponse.json().catch(() => ({}))
+      if (!uploadResponse.ok || !uploadJson?.pathname) {
+        return
+      }
+      uploadedPath = uploadJson.pathname as string
+      uploadedName = selectedFile.name
+    }
+
+    const messageContent = content || (uploadedName ? `Shared a file: ${uploadedName}` : "")
+    const messageType = uploadedPath ? "file" : "text"
     const optimistic: Message = {
       id: tempId,
       conversation_id: selectedConversation.id,
       sender_id: currentUserId,
-      content,
-      message_type: "text",
+      content: messageContent,
+      message_type: messageType,
+      file_url: uploadedPath,
+      file_name: uploadedName,
       is_edited: false,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     }
     addMessage(optimistic)
     setNewMessage("")
-    broadcastTyping(false)
-    if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current)
-
-    const { data, error } = await supabase
-      .from("messages")
-      .insert({ conversation_id: selectedConversation.id, sender_id: currentUserId, content, message_type: "text" })
-      .select().single()
+    setSelectedFile(null)
+    const response = await fetch("/api/conversations/messages", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        conversationId: selectedConversation.id,
+        content: messageContent,
+        messageType,
+        fileUrl: uploadedPath,
+        fileName: uploadedName,
+      }),
+    })
+    const json = await response.json().catch(() => null) as { message?: Message } | null
+    const data = json?.message
+    const error = response.ok ? null : new Error("Failed to send")
 
     if (!error && data) {
-      replaceOptimisticMessage(tempId, data as Message)
+      replaceOptimisticMessage(tempId, data)
       updateConversationTimestamp(selectedConversation.id)
     } else {
       removeMessage(tempId)
-      setNewMessage(content)
+      setNewMessage(messageContent)
     }
   }
 
-  function handleTyping(value: string) {
-    setNewMessage(value)
-    broadcastTyping(true)
-    if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current)
-    typingTimeoutRef.current = setTimeout(() => broadcastTyping(false), 2000)
+  async function deleteMessage(messageId: string) {
+    if (!selectedConversation) return
+    const response = await fetch(
+      `/api/conversations/messages?conversationId=${encodeURIComponent(selectedConversation.id)}&messageId=${encodeURIComponent(messageId)}`,
+      { method: "DELETE" },
+    )
+    if (response.ok) {
+      removeMessage(messageId)
+    }
   }
-
-  const typingUsers = Object.entries(isTyping)
-    .filter(([, v]) => v)
-    .map(([uid]) => getProfileById(uid)?.display_name || "Someone")
 
   const filteredProfiles = allProfiles.filter(
     (p) => p.id !== currentUserId &&
@@ -364,10 +423,9 @@ export function MessagesClient({ currentUserId, initialConversations, allProfile
                   <div>
                     <p className="font-medium text-sm">{getConversationName(selectedConversation)}</p>
                     <p className="text-xs text-muted-foreground">
-                      {typingUsers.length > 0 ? `${typingUsers[0]} is typing...` :
-                        selectedConversation.is_group
-                          ? `${selectedConversation.conversation_participants.length} members`
-                          : "Online"}
+                      {selectedConversation.is_group
+                        ? `${selectedConversation.conversation_participants.length} members`
+                        : "Online"}
                     </p>
                   </div>
                 </div>
@@ -408,10 +466,38 @@ export function MessagesClient({ currentUserId, initialConversations, allProfile
                               {sender?.display_name || "Unknown"}
                             </p>
                           )}
-                          <div className={cn("rounded-2xl px-4 py-2 break-words",
+                          <div className={cn("rounded-2xl px-4 py-2 break-words relative group",
                             isOwn ? "bg-primary text-primary-foreground rounded-br-sm" : "bg-muted rounded-bl-sm",
                             message.id.startsWith("temp-") && "opacity-60")}>
+                            {isOwn && !message.id.startsWith("temp-") && (
+                              <button
+                                type="button"
+                                aria-label="Delete message"
+                                onClick={() => deleteMessage(message.id)}
+                                className={cn(
+                                  "absolute -left-8 top-1/2 -translate-y-1/2 rounded p-1 opacity-0 transition-opacity group-hover:opacity-100",
+                                  "hover:bg-destructive/10",
+                                )}
+                              >
+                                <Trash2 className="w-3.5 h-3.5 text-destructive" />
+                              </button>
+                            )}
                             <p className="text-sm leading-relaxed">{message.content}</p>
+                            {message.message_type === "file" && message.file_url && (
+                              <a
+                                href={message.file_url.startsWith("http")
+                                  ? message.file_url
+                                  : `/api/file?pathname=${encodeURIComponent(message.file_url)}`}
+                                target="_blank"
+                                rel="noreferrer"
+                                className={cn(
+                                  "mt-2 inline-flex text-xs underline underline-offset-2",
+                                  isOwn ? "text-primary-foreground/90" : "text-primary",
+                                )}
+                              >
+                                {message.file_name || "Open attachment"}
+                              </a>
+                            )}
                           </div>
                           <div className={cn("flex items-center gap-1 mt-0.5 px-1", isOwn && "flex-row-reverse")}>
                             <span className="text-[10px] text-muted-foreground">
@@ -431,34 +517,48 @@ export function MessagesClient({ currentUserId, initialConversations, allProfile
                     )
                   })}
 
-                  {typingUsers.length > 0 && (
-                    <div className="flex gap-2 mt-3">
-                      <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-xs font-medium shrink-0">
-                        {typingUsers[0].charAt(0).toUpperCase()}
-                      </div>
-                      <div className="bg-muted rounded-2xl rounded-bl-sm px-4 py-3 flex items-center gap-1">
-                        <span className="w-1.5 h-1.5 bg-muted-foreground rounded-full animate-bounce [animation-delay:0ms]" />
-                        <span className="w-1.5 h-1.5 bg-muted-foreground rounded-full animate-bounce [animation-delay:150ms]" />
-                        <span className="w-1.5 h-1.5 bg-muted-foreground rounded-full animate-bounce [animation-delay:300ms]" />
-                      </div>
-                    </div>
-                  )}
                   <div ref={messagesEndRef} />
                 </div>
               </ScrollArea>
 
               <form onSubmit={sendMessage} className="p-4 border-t border-border bg-card shrink-0">
+                {selectedFile && (
+                  <div className="mb-2 flex items-center justify-between rounded-lg border bg-muted/50 px-3 py-2 text-xs">
+                    <span className="truncate max-w-[85%]">{selectedFile.name}</span>
+                    <button
+                      type="button"
+                      onClick={() => setSelectedFile(null)}
+                      className="text-muted-foreground hover:text-foreground"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                )}
                 <div className="flex gap-2">
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    className="hidden"
+                    onChange={(e) => setSelectedFile(e.target.files?.[0] ?? null)}
+                  />
+                  <Button
+                    type="button"
+                    size="icon"
+                    variant="outline"
+                    onClick={() => fileInputRef.current?.click()}
+                  >
+                    <Paperclip className="w-4 h-4" />
+                  </Button>
                   <Input
                     placeholder={`Message ${getConversationName(selectedConversation)}...`}
                     value={newMessage}
-                    onChange={(e) => handleTyping(e.target.value)}
+                    onChange={(e) => setNewMessage(e.target.value)}
                     className="flex-1 bg-muted/50 border-muted"
                     onKeyDown={(e) => {
                       if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendMessage(e as unknown as React.FormEvent) }
                     }}
                   />
-                  <Button type="submit" size="icon" disabled={!newMessage.trim()}>
+                  <Button type="submit" size="icon" disabled={!newMessage.trim() && !selectedFile}>
                     <Send className="w-4 h-4" />
                   </Button>
                 </div>
@@ -488,6 +588,35 @@ export function MessagesClient({ currentUserId, initialConversations, allProfile
               </p>
             </div>
             <ScrollArea className="flex-1 p-2">
+              {voice.participants.some((participant) => participant.isSharingScreen) && (
+                <div className="mb-2 space-y-2">
+                  {voice.participants
+                    .filter((participant) => participant.isSharingScreen)
+                    .map((participant) => (
+                      <div key={`screen-${participant.userId}`} className="rounded-lg border overflow-hidden bg-black/80">
+                        <video
+                          autoPlay
+                          playsInline
+                          muted={participant.userId === currentUserId}
+                          className="w-full h-24 object-cover"
+                          ref={(el) => {
+                            if (!el) return
+                            const stream = participant.userId === currentUserId
+                              ? getLocalScreenStream()
+                              : getRemoteScreenStream(participant.userId)
+                            if (stream && el.srcObject !== stream) {
+                              el.srcObject = stream
+                            }
+                          }}
+                          data-version={screenShareVersion}
+                        />
+                        <p className="px-2 py-1 text-[10px] text-muted-foreground bg-card">
+                          {participant.userId === currentUserId ? "Your screen" : `${participant.displayName}'s screen`}
+                        </p>
+                      </div>
+                    ))}
+                </div>
+              )}
               <div className="space-y-1">
                 {voice.participants.map((participant) => (
                   <div key={participant.userId}

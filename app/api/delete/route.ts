@@ -1,5 +1,5 @@
-import { del } from "@vercel/blob"
 import { type NextRequest, NextResponse } from "next/server"
+import { createAdminClient } from "@/lib/supabase/admin"
 
 export async function DELETE(request: NextRequest) {
   try {
@@ -9,7 +9,12 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json({ error: "No URL provided" }, { status: 400 })
     }
 
-    await del(url)
+    const bucket = process.env.MINI_DISCORD_STORAGE_BUCKET ?? "discord-files"
+    const admin = createAdminClient()
+    const { error } = await admin.storage.from(bucket).remove([url])
+    if (error) {
+      return NextResponse.json({ error: error.message }, { status: 500 })
+    }
 
     return NextResponse.json({ success: true })
   } catch (error) {

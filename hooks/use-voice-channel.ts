@@ -1,6 +1,6 @@
 "use client"
 
-import { useRef, useCallback } from "react"
+import { useRef, useCallback, useState } from "react"
 import { createClient } from "@/lib/supabase/client"
 import { useVoiceStore } from "@/store/voice-store"
 import type { VoiceChannel, VoiceParticipant } from "@/types"
@@ -32,6 +32,7 @@ export function useVoiceChannel(currentUserId: string, getDisplayName: (id: stri
   const remoteStreamsRef = useRef<Record<string, MediaStream>>({})
   const remoteAudioRefs = useRef<Record<string, HTMLAudioElement>>({})
   const channelRef = useRef<ReturnType<ReturnType<typeof supabase.channel>> | null>(null)
+  const [screenShareVersion, setScreenShareVersion] = useState(0)
 
   function createPeerConnection(remoteUserId: string, rtcConfig: RTCConfiguration): RTCPeerConnection {
     const pc = new RTCPeerConnection(rtcConfig)
@@ -58,6 +59,12 @@ export function useVoiceChannel(currentUserId: string, getDisplayName: (id: stri
     pc.ontrack = ({ track }) => {
       remoteStream.addTrack(track)
       remoteStreamsRef.current[remoteUserId] = remoteStream
+      if (track.kind === "video") {
+        setScreenShareVersion((v) => v + 1)
+      }
+      track.onended = () => {
+        setScreenShareVersion((v) => v + 1)
+      }
       // Attach audio
       if (!remoteAudioRefs.current[remoteUserId]) {
         const audio = new Audio()
@@ -128,6 +135,7 @@ export function useVoiceChannel(currentUserId: string, getDisplayName: (id: stri
         delete remoteStreamsRef.current[p.userId]
         const audio = remoteAudioRefs.current[p.userId]
         if (audio) { audio.srcObject = null; delete remoteAudioRefs.current[p.userId] }
+        setScreenShareVersion((v) => v + 1)
       })
     })
 
@@ -173,6 +181,7 @@ export function useVoiceChannel(currentUserId: string, getDisplayName: (id: stri
     Object.values(remoteAudioRefs.current).forEach((a) => { a.srcObject = null })
     remoteAudioRefs.current = {}
     remoteStreamsRef.current = {}
+    setScreenShareVersion((v) => v + 1)
 
     if (channelRef.current) {
       await channelRef.current.untrack()
@@ -214,6 +223,7 @@ export function useVoiceChannel(currentUserId: string, getDisplayName: (id: stri
         pc.getSenders().filter((s) => s.track?.kind === "video").forEach((s) => pc.removeTrack(s))
       })
       store.setSharingScreen(false)
+      setScreenShareVersion((v) => v + 1)
       channelRef.current?.track({
         userId: currentUserId,
         displayName: getDisplayName(currentUserId),
@@ -241,9 +251,11 @@ export function useVoiceChannel(currentUserId: string, getDisplayName: (id: stri
         videoTrack.onended = () => {
           store.setSharingScreen(false)
           screenStreamRef.current = null
+          setScreenShareVersion((v) => v + 1)
         }
 
         store.setSharingScreen(true)
+        setScreenShareVersion((v) => v + 1)
         channelRef.current?.track({
           userId: currentUserId,
           displayName: getDisplayName(currentUserId),
@@ -257,5 +269,22 @@ export function useVoiceChannel(currentUserId: string, getDisplayName: (id: stri
     }
   }, [store, currentUserId, getDisplayName])
 
-  return { joinVoiceChannel, leaveVoiceChannel, toggleMute, toggleDeafen, toggleScreenShare }
+  function getRemoteScreenStream(userId: string) {
+    return remoteStreamsRef.current[userId] ?? null
+  }
+
+  function getLocalScreenStream() {
+    return screenStreamRef.current
+  }
+
+  return {
+    joinVoiceChannel,
+    leaveVoiceChannel,
+    toggleMute,
+    toggleDeafen,
+    toggleScreenShare,
+    getRemoteScreenStream,
+    getLocalScreenStream,
+    screenShareVersion,
+  }
 }

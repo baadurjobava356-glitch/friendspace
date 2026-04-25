@@ -35,6 +35,11 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   const payload = await req.json().catch(() => null)
+  if (payload && typeof payload === "object") {
+    console.error("CLIENT_DEBUG", JSON.stringify(payload))
+  } else {
+    console.error("CLIENT_DEBUG", "invalid_payload")
+  }
   // Also write directly to local NDJSON log so we always have evidence.
   // (Do not log secrets; payloads are controlled by our instrumentation.)
   await appendLocal(payload)

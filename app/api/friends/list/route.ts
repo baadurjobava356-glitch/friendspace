@@ -11,7 +11,13 @@ export async function GET() {
     .select("*")
     .or(`user_a.eq.${user.id},user_b.eq.${user.id}`)
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 400 })
+  if (error) {
+    // Allow Members page to render even before friendship tables are migrated.
+    if (error.message.includes("does not exist")) {
+      return NextResponse.json({ friends: [] })
+    }
+    return NextResponse.json({ error: error.message }, { status: 400 })
+  }
 
   const friendIds = (friendships || []).map((f) =>
     f.user_a === user.id ? f.user_b : f.user_a

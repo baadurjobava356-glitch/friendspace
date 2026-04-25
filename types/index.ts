@@ -69,3 +69,5 @@ export interface Friendship {
 }
 
 export type MessageStatus = "sending" | "sent" | "delivered" | "read"
+
+export * from "./mini-discord"

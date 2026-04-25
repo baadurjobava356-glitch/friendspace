@@ -1,70 +1,53 @@
 "use client"
 
 import { useEffect, useRef } from "react"
-import { createClient } from "@/lib/supabase/client"
 import { useConversationStore } from "@/store/conversation-store"
 import type { Message } from "@/types"
 
-export function useRealtimeMessages(conversationId: string | undefined, currentUserId: string) {
-  const supabase = createClient()
+export function useRealtimeMessages(conversationId: string | undefined, _currentUserId: string) {
   const store = useConversationStore()
   const typingTimeoutsRef = useRef<Record<string, ReturnType<typeof setTimeout>>>({})
 
   useEffect(() => {
     if (!conversationId) return
 
-    // Load messages
-    supabase
-      .from("messages")
-      .select("*")
-      .eq("conversation_id", conversationId)
-      .order("created_at", { ascending: true })
-      .limit(100)
-      .then(({ data }) => store.setMessages(data || []))
+    let isCancelled = false
+    let previousCount = -1
 
-    // Mark as read
-    supabase
-      .from("conversation_participants")
-      .update({ last_read_at: new Date().toISOString() })
-      .eq("conversation_id", conversationId)
-      .eq("user_id", currentUserId)
+    async function loadMessages() {
+      const response = await fetch(`/api/conversations/messages?conversationId=${encodeURIComponent(conversationId)}`)
+      if (!response.ok) return
+      const json = await response.json().catch(() => null) as { messages?: Message[] } | null
+      if (isCancelled) return
+      const nextMessages = json?.messages ?? []
+      store.setMessages(nextMessages)
+      previousCount = nextMessages.length
+    }
 
-    const channel = supabase
-      .channel(`messages:${conversationId}`)
-      .on(
-        "postgres_changes",
-        { event: "INSERT", schema: "public", table: "messages", filter: `conversation_id=eq.${conversationId}` },
-        (payload) => {
-          const msg = payload.new as Message
-          store.addMessage(msg)
-          supabase
-            .from("conversation_participants")
-            .update({ last_read_at: new Date().toISOString() })
-            .eq("conversation_id", conversationId)
-            .eq("user_id", currentUserId)
-        }
-      )
-      .on("broadcast", { event: "typing" }, (payload) => {
-        const { userId, isTyping } = payload.payload as { userId: string; isTyping: boolean }
-        if (userId === currentUserId) return
-        store.setTyping(userId, isTyping)
-        if (isTyping) {
-          if (typingTimeoutsRef.current[userId]) clearTimeout(typingTimeoutsRef.current[userId])
-          typingTimeoutsRef.current[userId] = setTimeout(() => store.setTyping(userId, false), 3000)
-        }
-      })
-      .subscribe()
+    loadMessages()
+    const interval = setInterval(async () => {
+      const response = await fetch(`/api/conversations/messages?conversationId=${encodeURIComponent(conversationId)}`)
+      if (!response.ok) return
+      const json = await response.json().catch(() => null) as { messages?: Message[] } | null
+      if (isCancelled) return
+      const nextMessages = json?.messages ?? []
+      if (nextMessages.length !== previousCount) {
+        store.setMessages(nextMessages)
+        previousCount = nextMessages.length
+      }
+    }, 2000)
 
     return () => {
-      supabase.removeChannel(channel)
+      isCancelled = true
+      clearInterval(interval)
       Object.values(typingTimeoutsRef.current).forEach(clearTimeout)
     }
-  }, [conversationId])
+  }, [conversationId, store])
 
   function broadcastTyping(typing: boolean) {
-    if (!conversationId) return
-    const ch = supabase.channel(`messages:${conversationId}`)
-    ch.send({ type: "broadcast", event: "typing", payload: { userId: currentUserId, isTyping: typing } })
+    // Typing status display has been disabled in the UI.
+    void typing
+    void conversationId
   }
 
   return { broadcastTyping }

@@ -13,31 +13,72 @@ export function useFriends(currentUserId: string) {
     if (!currentUserId) return
 
     async function loadData() {
-      const [{ data: incoming }, { data: sent }, { data: friends }] = await Promise.all([
+      const [
+        { data: incoming, error: incomingError },
+        { data: sent, error: sentError },
+        { data: friends, error: friendsError },
+      ] = await Promise.all([
         supabase
           .from("friend_requests")
-          .select("*, sender:profiles!friend_requests_sender_id_fkey(*)")
+          .select("*")
           .eq("receiver_id", currentUserId)
           .eq("status", "pending"),
         supabase
           .from("friend_requests")
-          .select("*, receiver:profiles!friend_requests_receiver_id_fkey(*)")
+          .select("*")
           .eq("sender_id", currentUserId)
           .eq("status", "pending"),
         supabase
           .from("friendships")
-          .select("*, friend:profiles!friendships_user_b_fkey(*)")
+          .select("*")
           .or(`user_a.eq.${currentUserId},user_b.eq.${currentUserId}`),
       ])
-      store.setFriendRequests((incoming || []) as FriendRequest[])
-      store.setSentRequests((sent || []) as FriendRequest[])
+
+      if (incomingError || sentError || friendsError) {
+        console.warn("Friends data unavailable", {
+          incomingError: incomingError?.message,
+          sentError: sentError?.message,
+          friendsError: friendsError?.message,
+        })
+      }
+
+      const profileIds = Array.from(
+        new Set([
+          ...(incoming ?? []).map((r: any) => r.sender_id),
+          ...(sent ?? []).map((r: any) => r.receiver_id),
+          ...(friends ?? []).flatMap((f: any) => [f.user_a, f.user_b]),
+        ].filter(Boolean)),
+      )
+
+      const { data: profiles, error: profilesError } =
+        profileIds.length > 0
+          ? await supabase.from("profiles").select("*").in("id", profileIds)
+          : { data: [], error: null as any }
+
+      if (profilesError) {
+        console.warn("Friends profiles unavailable", { profilesError: profilesError.message })
+      }
+
+      const profileById = new Map((profiles ?? []).map((p: any) => [p.id, p]))
+      const incomingWithProfiles = (incoming ?? []).map((req: any) => ({
+        ...req,
+        sender: profileById.get(req.sender_id) ?? null,
+      }))
+      const sentWithProfiles = (sent ?? []).map((req: any) => ({
+        ...req,
+        receiver: profileById.get(req.receiver_id) ?? null,
+      }))
+
+      store.setFriendRequests(((incomingWithProfiles as FriendRequest[]) || []))
+      store.setSentRequests(((sentWithProfiles as FriendRequest[]) || []))
       store.setFriendships(friends || [])
     }
 
     loadData()
 
+    const channelName = `friend-requests:${currentUserId}:${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
     const channel = supabase
-      .channel(`friend-requests:${currentUserId}`)
+      .channel(channelName)
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "friend_requests" },
