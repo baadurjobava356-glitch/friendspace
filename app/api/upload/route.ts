@@ -25,6 +25,13 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ pathname: blob.url })
     }
 
+    if (!process.env.SUPABASE_SECRET_KEY) {
+      return NextResponse.json(
+        { error: "Upload is not configured. Set BLOB_READ_WRITE_TOKEN or SUPABASE_SECRET_KEY." },
+        { status: 503 },
+      )
+    }
+
     const bucket = process.env.MINI_DISCORD_STORAGE_BUCKET ?? "discord-files"
     const admin = createAdminClient()
     const bytes = new Uint8Array(await file.arrayBuffer())

@@ -95,32 +95,28 @@ export function SettingsClient({ user, initialProfile }: SettingsClientProps) {
   async function handleChangePassword(e: React.FormEvent) {
     e.preventDefault()
     setPassMsg(null)
-    if (!passwords.newPass || passwords.newPass.length < 8) {
-      setPassMsg({ type: "error", text: "Password must be at least 8 characters long." })
-      return
-    }
-    if (passwords.newPass !== passwords.confirm) {
-      setPassMsg({ type: "error", text: "New passwords do not match. Please try again." })
-      return
-    }
-    if (passStrength < 2) {
-      setPassMsg({ type: "error", text: "Password is too weak. Add uppercase letters, numbers, or symbols." })
+    if (!user.email) {
+      setPassMsg({ type: "error", text: "No email found for this account." })
       return
     }
     setIsChangingPass(true)
-    const { error } = await supabase.auth.updateUser({ password: passwords.newPass })
-    if (error) {
-      let msg = "Failed to change password."
-      if (error.message.includes("same password")) msg = "New password must be different from your current password."
-      else if (error.message.includes("weak")) msg = "Password is too weak. Choose a stronger password."
-      else if (error.message.includes("session")) msg = "Session expired. Please sign in again."
-      setPassMsg({ type: "error", text: msg })
-    } else {
-      setPassMsg({ type: "success", text: "Password changed successfully!" })
+    try {
+      const res = await fetch("/api/auth/forgot-password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: user.email }),
+      })
+      const body = await res.json().catch(() => null) as { error?: string } | null
+      if (!res.ok) {
+        setPassMsg({ type: "error", text: body?.error ?? "Failed to send password reset email." })
+      } else {
+        setPassMsg({ type: "success", text: "Password reset link sent to your email. Open the link to finish changing your password." })
+      }
+    } finally {
       setPasswords({ newPass: "", confirm: "" })
       setPassStrength(0)
+      setIsChangingPass(false)
     }
-    setIsChangingPass(false)
   }
 
   function applyTheme(t: "light" | "dark" | "system") {
@@ -302,7 +298,7 @@ export function SettingsClient({ user, initialProfile }: SettingsClientProps) {
             <Card>
               <CardHeader>
                 <CardTitle>Change Password</CardTitle>
-                <CardDescription>Choose a strong, unique password to keep your account secure</CardDescription>
+                <CardDescription>For security, password changes require email verification via reset link</CardDescription>
               </CardHeader>
               <CardContent>
                 <form onSubmit={handleChangePassword} className="space-y-4">
@@ -375,8 +371,8 @@ export function SettingsClient({ user, initialProfile }: SettingsClientProps) {
                       </div>
                     </Alert>
                   )}
-                  <Button type="submit" disabled={isChangingPass || !passwords.newPass || !passwords.confirm || !passwordsMatch}>
-                    {isChangingPass ? <><Spinner className="w-4 h-4 mr-2" />Changing…</> : <><Shield className="w-4 h-4 mr-2" />Update Password</>}
+                  <Button type="submit" disabled={isChangingPass}>
+                    {isChangingPass ? <><Spinner className="w-4 h-4 mr-2" />Sending…</> : <><Shield className="w-4 h-4 mr-2" />Send Reset Link</>}
                   </Button>
                 </form>
               </CardContent>
