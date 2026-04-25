@@ -198,6 +198,31 @@ export function MessagesClient({
     return [".png", ".jpg", ".jpeg", ".gif", ".webp", ".bmp", ".svg"].some((ext) => value.includes(ext))
   }
 
+  function renderTextWithLinks(text: string, isOwn: boolean) {
+    const urlRegex = /(https?:\/\/[^\s]+)/g
+    const parts = text.split(urlRegex)
+    return parts.map((part, idx) => {
+      if (!part) return null
+      if (/^https?:\/\//.test(part)) {
+        return (
+          <a
+            key={`${part}-${idx}`}
+            href={part}
+            target="_blank"
+            rel="noreferrer"
+            className={cn(
+              "underline underline-offset-2 break-all",
+              isOwn ? "text-primary-foreground/90" : "text-primary",
+            )}
+          >
+            {part}
+          </a>
+        )
+      }
+      return <span key={`${idx}-${part}`}>{part}</span>
+    })
+  }
+
   async function createConversation() {
     if (selectedUsers.length === 0) return
     if (selectedUsers.length === 1) {
@@ -356,6 +381,33 @@ export function MessagesClient({
 
   return (
     <TooltipProvider>
+      {incomingCall && (
+        <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/40 p-4">
+          <div className="w-full max-w-sm rounded-2xl border bg-card p-5 shadow-2xl">
+            <div className="mb-4 flex items-center gap-3">
+              <div className="relative flex h-11 w-11 items-center justify-center rounded-full bg-green-500/15">
+                <PhoneIncoming className="h-5 w-5 text-green-600" />
+                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-green-500/20" />
+              </div>
+              <div className="min-w-0">
+                <p className="text-sm text-muted-foreground">Incoming call</p>
+                <p className="truncate font-semibold">{incomingCall.fromName}</p>
+              </div>
+            </div>
+            <p className="mb-4 text-sm text-muted-foreground">
+              {incomingCall.channelName}
+            </p>
+            <div className="flex items-center justify-end gap-2">
+              <Button size="sm" variant="ghost" onClick={dismissIncomingCall}>
+                Decline
+              </Button>
+              <Button size="sm" onClick={acceptIncomingCall}>
+                Answer
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
       <div ref={rootLayoutRef} className="flex h-[calc(100vh-3.5rem)] min-h-0 overflow-hidden">
         {/* Sidebar */}
         <div ref={sidebarRef} className="w-72 border-r border-border flex flex-col bg-card shrink-0 min-h-0">
@@ -551,22 +603,6 @@ export function MessagesClient({
         <div ref={mainPanelRef} className="flex-1 flex flex-col bg-background min-w-0 min-h-0 overflow-hidden">
           {selectedConversation ? (
             <>
-              {incomingCall && (
-                <div className="mx-4 mt-3 rounded-lg border border-green-500/40 bg-green-500/10 px-3 py-2">
-                  <div className="flex items-center justify-between gap-2">
-                    <div className="flex items-center gap-2 min-w-0">
-                      <PhoneIncoming className="w-4 h-4 text-green-600 shrink-0" />
-                      <p className="text-sm truncate">
-                        <span className="font-medium">{incomingCall.fromName}</span> is calling you
-                      </p>
-                    </div>
-                    <div className="flex items-center gap-1 shrink-0">
-                      <Button size="sm" onClick={acceptIncomingCall}>Accept</Button>
-                      <Button size="sm" variant="ghost" onClick={dismissIncomingCall}>Dismiss</Button>
-                    </div>
-                  </div>
-                </div>
-              )}
               <div className="h-14 border-b border-border flex items-center justify-between px-4 bg-card shrink-0">
                 <div className="flex items-center gap-3">
                   <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
@@ -631,31 +667,6 @@ export function MessagesClient({
                           <div className={cn("rounded-2xl px-4 py-2 break-words relative group overflow-hidden",
                             isOwn ? "bg-primary text-primary-foreground rounded-br-sm" : "bg-muted rounded-bl-sm",
                             message.id.startsWith("temp-") && "opacity-60")}>
-                            <button
-                              type="button"
-                              aria-label="Reply to message"
-                              onClick={() => setReplyingTo(message)}
-                              className={cn(
-                                "absolute top-1/2 -translate-y-1/2 rounded p-1 opacity-0 transition-opacity group-hover:opacity-100",
-                                isOwn ? "-left-8" : "-right-8",
-                                "hover:bg-muted/40",
-                              )}
-                            >
-                              <CornerUpLeft className="w-3.5 h-3.5" />
-                            </button>
-                            {isOwn && !message.id.startsWith("temp-") && (
-                              <button
-                                type="button"
-                                aria-label="Delete message"
-                                onClick={() => deleteMessage(message.id)}
-                                className={cn(
-                                  "absolute -left-14 top-1/2 -translate-y-1/2 rounded p-1 opacity-0 transition-opacity group-hover:opacity-100",
-                                  "hover:bg-destructive/10",
-                                )}
-                              >
-                                <Trash2 className="w-3.5 h-3.5 text-destructive" />
-                              </button>
-                            )}
                             {repliedMessage && (
                               <div className={cn(
                                 "mb-2 rounded-lg border px-2 py-1 text-xs",
@@ -669,7 +680,9 @@ export function MessagesClient({
                                 </p>
                               </div>
                             )}
-                            <p className="text-sm leading-relaxed break-all">{message.content}</p>
+                            <p className="text-sm leading-relaxed break-all whitespace-pre-wrap">
+                              {renderTextWithLinks(message.content, isOwn)}
+                            </p>
                             {message.message_type === "file" && message.file_url && (
                               <>
                                 {isImageAttachment(message) && (
@@ -708,6 +721,26 @@ export function MessagesClient({
                                   {message.file_name || "Open attachment"}
                                 </a>
                               </>
+                            )}
+                          </div>
+                          <div className={cn("mt-1 flex items-center gap-1 px-1", isOwn && "justify-end")}>
+                            <button
+                              type="button"
+                              aria-label="Reply to message"
+                              onClick={() => setReplyingTo(message)}
+                              className="inline-flex h-5 w-5 items-center justify-center rounded text-muted-foreground hover:bg-muted hover:text-foreground"
+                            >
+                              <CornerUpLeft className="w-3 h-3" />
+                            </button>
+                            {isOwn && !message.id.startsWith("temp-") && (
+                              <button
+                                type="button"
+                                aria-label="Delete message"
+                                onClick={() => deleteMessage(message.id)}
+                                className="inline-flex h-5 w-5 items-center justify-center rounded text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+                              >
+                                <Trash2 className="w-3 h-3" />
+                              </button>
                             )}
                           </div>
                           <div className={cn("flex items-center gap-1 mt-0.5 px-1", isOwn && "flex-row-reverse")}>
