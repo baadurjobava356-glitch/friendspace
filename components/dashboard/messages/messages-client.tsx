@@ -29,6 +29,7 @@ interface MessagesClientProps {
   initialConversations: Conversation[]
   allProfiles: Profile[]
   initialSelectedConversationId?: string | null
+  initialAutoCall?: boolean
 }
 
 const DEFAULT_VOICE_CHANNELS: VoiceChannel[] = [
@@ -42,6 +43,7 @@ export function MessagesClient({
   initialConversations,
   allProfiles,
   initialSelectedConversationId,
+  initialAutoCall = false,
 }: MessagesClientProps) {
   const supabase = createClient()
 
@@ -61,6 +63,7 @@ export function MessagesClient({
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const initialized = useRef(false)
+  const autoCallTriggeredRef = useRef(false)
 
   useEffect(() => {
     if (!initialized.current) {
@@ -98,6 +101,14 @@ export function MessagesClient({
 
   function getProfileById(id: string) {
     return allProfiles.find((p) => p.id === id)
+  }
+
+  function getPrivateCallChannel(conv: Conversation): VoiceChannel {
+    const label = conv.is_group ? conv.name || "Group" : getConversationName(conv)
+    return {
+      id: `vc-conv-${conv.id}`,
+      name: `${label} Call`,
+    }
   }
 
   function getMessageStatus(message: Message): "sending" | "sent" | "delivered" | "read" {
@@ -222,6 +233,12 @@ export function MessagesClient({
     (p) => p.id !== currentUserId &&
       (p.display_name?.toLowerCase().includes(searchQuery.toLowerCase()) || !searchQuery)
   )
+
+  useEffect(() => {
+    if (!selectedConversation || !initialAutoCall || autoCallTriggeredRef.current) return
+    autoCallTriggeredRef.current = true
+    void joinVoiceChannel(getPrivateCallChannel(selectedConversation))
+  }, [selectedConversation, initialAutoCall, joinVoiceChannel])
 
   return (
     <TooltipProvider>
@@ -433,11 +450,11 @@ export function MessagesClient({
                   <TooltipTrigger asChild>
                     <Button size="icon" variant="ghost"
                       className="h-8 w-8 text-green-600 hover:text-green-700 hover:bg-green-500/10"
-                      onClick={() => joinVoiceChannel(DEFAULT_VOICE_CHANNELS[0])}>
+                      onClick={() => selectedConversation && joinVoiceChannel(getPrivateCallChannel(selectedConversation))}>
                       <PhoneCall className="w-4 h-4" />
                     </Button>
                   </TooltipTrigger>
-                  <TooltipContent>Join voice channel</TooltipContent>
+                  <TooltipContent>Start private call</TooltipContent>
                 </Tooltip>
               </div>
 

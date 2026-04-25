@@ -12,7 +12,7 @@ import {
   Tooltip, TooltipContent, TooltipProvider, TooltipTrigger,
 } from "@/components/ui/tooltip"
 import {
-  UserPlus, UserCheck, UserX, MessageCircle, Search, Users, Clock, Check,
+  UserPlus, UserCheck, UserX, MessageCircle, Search, Users, Clock, Check, PhoneCall,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { useFriends } from "@/hooks/use-friends"
@@ -57,8 +57,8 @@ export function MembersClient({ currentUserId, allProfiles }: MembersClientProps
     router.refresh()
   }
 
-  async function startConversation(targetUserId: string) {
-    setLoadingIds((s) => new Set(s).add(`dm:${targetUserId}`))
+  async function openDirectConversation(targetUserId: string, startCall = false) {
+    setLoadingIds((s) => new Set(s).add(`${startCall ? "call" : "dm"}:${targetUserId}`))
     try {
       const res = await fetch("/api/conversations/direct", {
         method: "POST",
@@ -72,14 +72,14 @@ export function MembersClient({ currentUserId, allProfiles }: MembersClientProps
       }
       const conversationId = body?.conversationId as string | undefined
       if (conversationId) {
-        router.push(`/dashboard/messages?conversation=${conversationId}`)
+        router.push(`/dashboard/messages?conversation=${conversationId}${startCall ? "&call=1" : ""}`)
       } else {
-        router.push("/dashboard/messages")
+        router.push(`/dashboard/messages${startCall ? "?call=1" : ""}`)
       }
     } finally {
       setLoadingIds((s) => {
         const n = new Set(s)
-        n.delete(`dm:${targetUserId}`)
+        n.delete(`${startCall ? "call" : "dm"}:${targetUserId}`)
         return n
       })
     }
@@ -164,6 +164,7 @@ export function MembersClient({ currentUserId, allProfiles }: MembersClientProps
                   const status = getStatusForUser(member.id)
                   const isLoading = loadingIds.has(member.id)
                   const isDmLoading = loadingIds.has(`dm:${member.id}`)
+                  const isCallLoading = loadingIds.has(`call:${member.id}`)
                   const pendingRequest = friendRequests.find((r) => r.sender_id === member.id)
 
                   return (
@@ -194,10 +195,13 @@ export function MembersClient({ currentUserId, allProfiles }: MembersClientProps
                         <div className="flex gap-2">
                           {status === "friend" && (
                             <>
-                              <Button variant="outline" size="sm" className="flex-1 text-xs" asChild>
-                                <a href="/dashboard/messages">
-                                  <MessageCircle className="w-3.5 h-3.5 mr-1.5" />Message
-                                </a>
+                              <Button variant="outline" size="sm" className="flex-1 text-xs" disabled={isDmLoading}
+                                onClick={() => openDirectConversation(member.id, false)}>
+                                <MessageCircle className="w-3.5 h-3.5 mr-1.5" />Message
+                              </Button>
+                              <Button variant="outline" size="sm" className="text-xs px-2" disabled={isCallLoading}
+                                onClick={() => openDirectConversation(member.id, true)}>
+                                <PhoneCall className="w-3.5 h-3.5" />
                               </Button>
                               <Tooltip>
                                 <TooltipTrigger asChild>
@@ -232,8 +236,13 @@ export function MembersClient({ currentUserId, allProfiles }: MembersClientProps
                             <>
                               <Button variant="outline" size="sm" className="flex-1 text-xs"
                                 disabled={isDmLoading}
-                                onClick={() => startConversation(member.id)}>
-                                <MessageCircle className="w-3.5 h-3.5 mr-1.5" />Chat
+                                onClick={() => openDirectConversation(member.id, false)}>
+                                  <MessageCircle className="w-3.5 h-3.5 mr-1.5" />Message
+                              </Button>
+                              <Button variant="outline" size="sm" className="text-xs px-2"
+                                disabled={isCallLoading}
+                                onClick={() => openDirectConversation(member.id, true)}>
+                                <PhoneCall className="w-3.5 h-3.5" />
                               </Button>
                               <Button size="sm" className="flex-1 text-xs"
                                 disabled={isLoading}
@@ -282,11 +291,16 @@ export function MembersClient({ currentUserId, allProfiles }: MembersClientProps
                           </div>
                           <UserCheck className="w-4 h-4 text-green-600 shrink-0" />
                         </div>
-                        <Button variant="outline" size="sm" className="w-full text-xs" asChild>
-                          <a href="/dashboard/messages">
+                        <div className="flex gap-2">
+                          <Button variant="outline" size="sm" className="flex-1 text-xs"
+                            onClick={() => openDirectConversation(friend.id, false)}>
                             <MessageCircle className="w-3.5 h-3.5 mr-1.5" />Message
-                          </a>
-                        </Button>
+                          </Button>
+                          <Button variant="outline" size="sm" className="text-xs px-3"
+                            onClick={() => openDirectConversation(friend.id, true)}>
+                            <PhoneCall className="w-3.5 h-3.5" />
+                          </Button>
+                        </div>
                       </CardContent>
                     </Card>
                   )

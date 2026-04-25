@@ -7,7 +7,7 @@ import type { Profile } from "@/types"
 export default async function MessagesPage({
   searchParams,
 }: {
-  searchParams?: Promise<{ conversation?: string }>
+  searchParams?: Promise<{ conversation?: string; call?: string }>
 }) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -17,6 +17,7 @@ export default async function MessagesPage({
   }
   const resolvedSearchParams = await searchParams
   const initialSelectedConversationId = resolvedSearchParams?.conversation ?? generalConversationId
+  const initialAutoCall = resolvedSearchParams?.call === "1"
 
   const [{ data: conversations }, { data: profiles }] = await Promise.all([
     (async () => {
@@ -77,6 +78,7 @@ export default async function MessagesPage({
       initialConversations={conversations ?? []}
       allProfiles={mergedProfiles}
       initialSelectedConversationId={initialSelectedConversationId}
+      initialAutoCall={initialAutoCall}
     />
   )
 }
