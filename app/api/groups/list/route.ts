@@ -7,9 +7,9 @@ export async function GET() {
 
   const { data, error } = await auth.supabase
     .from('discord_group_members')
-    .select('role, discord_groups(*)')
+    .select('role, joined_at, group:discord_groups(*)')
     .eq('user_id', auth.user.id)
-    .order('joined_at', { ascending: false })
+    .order('joined_at', { ascending: true })
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 })
@@ -17,7 +17,8 @@ export async function GET() {
 
   const groups = (data ?? []).map((row) => ({
     role: row.role,
-    group: row.discord_groups,
+    joined_at: row.joined_at,
+    group: row.group,
   }))
 
   return NextResponse.json({ groups })

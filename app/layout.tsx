@@ -7,8 +7,8 @@ const _geist = Geist({ subsets: ["latin"] });
 const _geistMono = Geist_Mono({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: 'FriendSpace - Your Private Group Collaboration Hub',
-  description: 'A private collaboration platform for your friend group. Real-time messaging, shared calendars, file sharing, and event planning - all in one secure space.',
+  title: 'Friendspace — Your place to talk',
+  description: 'A Discord-style chat platform for your friends. Servers, channels, voice, video, DMs, real-time messaging, reactions, replies, pins, and more.',
   generator: 'v0.app',
   icons: {
     icon: [

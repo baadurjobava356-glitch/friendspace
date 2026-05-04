@@ -3,6 +3,12 @@
 
 @custom-variant dark (&:is(.dark *));
 
+/* ================================================================
+   Friendspace — Discord-inspired theme tokens
+   Light mode (default) keeps the original warm palette so the
+   marketing surface stays soft, but the chat app forces .dark and
+   uses the dedicated Discord-blurple palette below.
+   ================================================================ */
 :root {
   --background: oklch(0.985 0.002 75);
   --foreground: oklch(0.18 0.02 45);
@@ -10,68 +16,96 @@
   --card-foreground: oklch(0.18 0.02 45);
   --popover: oklch(1 0 0);
   --popover-foreground: oklch(0.18 0.02 45);
-  --primary: oklch(0.65 0.18 25);
+  --primary: oklch(0.55 0.22 270);            /* blurple */
   --primary-foreground: oklch(0.99 0 0);
   --secondary: oklch(0.96 0.01 75);
   --secondary-foreground: oklch(0.25 0.02 45);
   --muted: oklch(0.96 0.008 75);
   --muted-foreground: oklch(0.5 0.02 45);
-  --accent: oklch(0.55 0.16 160);
+  --accent: oklch(0.66 0.18 152);             /* online green */
   --accent-foreground: oklch(0.99 0 0);
   --destructive: oklch(0.55 0.22 27);
   --destructive-foreground: oklch(0.99 0 0);
   --border: oklch(0.90 0.01 75);
   --input: oklch(0.96 0.008 75);
-  --ring: oklch(0.65 0.18 25);
-  --chart-1: oklch(0.65 0.18 25);
-  --chart-2: oklch(0.55 0.16 160);
+  --ring: oklch(0.55 0.22 270);
+  --chart-1: oklch(0.55 0.22 270);
+  --chart-2: oklch(0.66 0.18 152);
   --chart-3: oklch(0.7 0.15 45);
   --chart-4: oklch(0.65 0.12 250);
   --chart-5: oklch(0.68 0.16 330);
   --radius: 0.625rem;
   --sidebar: oklch(0.98 0.005 75);
   --sidebar-foreground: oklch(0.18 0.02 45);
-  --sidebar-primary: oklch(0.65 0.18 25);
+  --sidebar-primary: oklch(0.55 0.22 270);
   --sidebar-primary-foreground: oklch(0.99 0 0);
   --sidebar-accent: oklch(0.94 0.02 75);
   --sidebar-accent-foreground: oklch(0.25 0.02 45);
   --sidebar-border: oklch(0.90 0.01 75);
-  --sidebar-ring: oklch(0.65 0.18 25);
+  --sidebar-ring: oklch(0.55 0.22 270);
+
+  /* Discord-specific palette tokens (used by chat shell only) */
+  --ds-blurple:        #5865F2;
+  --ds-blurple-hover:  #4752C4;
+  --ds-online:         #23A55A;
+  --ds-idle:           #F0B232;
+  --ds-dnd:            #F23F43;
+  --ds-offline:        #80848E;
+  --ds-streaming:      #593695;
+  --ds-bg-tertiary:    #1E1F22;
+  --ds-bg-secondary:   #2B2D31;
+  --ds-bg-secondary-alt:#232428;
+  --ds-bg-primary:     #313338;
+  --ds-bg-floating:    #111214;
+  --ds-bg-modifier-hover:  rgba(78, 80, 88, .16);
+  --ds-bg-modifier-active: rgba(78, 80, 88, .24);
+  --ds-bg-modifier-selected: rgba(78, 80, 88, .32);
+  --ds-text-normal:    #DBDEE1;
+  --ds-text-muted:     #949BA4;
+  --ds-text-link:      #00A8FC;
+  --ds-channel-default:#80848E;
+  --ds-channel-icon:   #80848E;
+  --ds-interactive-hover: #DBDEE1;
+  --ds-interactive-active: #FFFFFF;
+  --ds-divider:        #3F4147;
+  --ds-mention-fg:     #C9CDFB;
+  --ds-mention-bg:     rgba(88, 101, 242, .15);
+  --ds-mention-bar:    rgba(88, 101, 242, .60);
 }
 
 .dark {
-  --background: oklch(0.14 0.01 45);
+  --background: oklch(0.14 0.01 280);
   --foreground: oklch(0.96 0.01 75);
-  --card: oklch(0.18 0.01 45);
+  --card: oklch(0.18 0.01 280);
   --card-foreground: oklch(0.96 0.01 75);
-  --popover: oklch(0.18 0.01 45);
+  --popover: oklch(0.18 0.01 280);
   --popover-foreground: oklch(0.96 0.01 75);
-  --primary: oklch(0.72 0.16 25);
-  --primary-foreground: oklch(0.14 0.01 45);
-  --secondary: oklch(0.25 0.01 45);
+  --primary: oklch(0.62 0.22 270);
+  --primary-foreground: oklch(0.99 0 0);
+  --secondary: oklch(0.25 0.01 280);
   --secondary-foreground: oklch(0.96 0.01 75);
-  --muted: oklch(0.25 0.01 45);
-  --muted-foreground: oklch(0.65 0.02 75);
-  --accent: oklch(0.62 0.14 160);
-  --accent-foreground: oklch(0.14 0.01 45);
-  --destructive: oklch(0.6 0.2 27);
+  --muted: oklch(0.25 0.01 280);
+  --muted-foreground: oklch(0.7 0.02 280);
+  --accent: oklch(0.66 0.18 152);
+  --accent-foreground: oklch(0.99 0 0);
+  --destructive: oklch(0.62 0.23 25);
   --destructive-foreground: oklch(0.96 0.01 75);
-  --border: oklch(0.28 0.01 45);
-  --input: oklch(0.22 0.01 45);
-  --ring: oklch(0.72 0.16 25);
-  --chart-1: oklch(0.72 0.16 25);
-  --chart-2: oklch(0.62 0.14 160);
+  --border: oklch(0.28 0.01 280);
+  --input: oklch(0.22 0.01 280);
+  --ring: oklch(0.62 0.22 270);
+  --chart-1: oklch(0.62 0.22 270);
+  --chart-2: oklch(0.66 0.18 152);
   --chart-3: oklch(0.75 0.14 45);
   --chart-4: oklch(0.7 0.12 250);
   --chart-5: oklch(0.72 0.14 330);
-  --sidebar: oklch(0.16 0.01 45);
+  --sidebar: oklch(0.16 0.01 280);
   --sidebar-foreground: oklch(0.96 0.01 75);
-  --sidebar-primary: oklch(0.72 0.16 25);
-  --sidebar-primary-foreground: oklch(0.14 0.01 45);
-  --sidebar-accent: oklch(0.22 0.01 45);
+  --sidebar-primary: oklch(0.62 0.22 270);
+  --sidebar-primary-foreground: oklch(0.99 0 0);
+  --sidebar-accent: oklch(0.22 0.01 280);
   --sidebar-accent-foreground: oklch(0.96 0.01 75);
-  --sidebar-border: oklch(0.28 0.01 45);
-  --sidebar-ring: oklch(0.72 0.16 25);
+  --sidebar-border: oklch(0.28 0.01 280);
+  --sidebar-ring: oklch(0.62 0.22 270);
 }
 
 @theme inline {
@@ -113,6 +147,29 @@
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--sidebar-ring);
+
+  /* Discord palette as Tailwind utilities (text-ds-*, bg-ds-*) */
+  --color-ds-blurple: var(--ds-blurple);
+  --color-ds-blurple-hover: var(--ds-blurple-hover);
+  --color-ds-online: var(--ds-online);
+  --color-ds-idle: var(--ds-idle);
+  --color-ds-dnd: var(--ds-dnd);
+  --color-ds-offline: var(--ds-offline);
+  --color-ds-streaming: var(--ds-streaming);
+  --color-ds-bg-tertiary: var(--ds-bg-tertiary);
+  --color-ds-bg-secondary: var(--ds-bg-secondary);
+  --color-ds-bg-secondary-alt: var(--ds-bg-secondary-alt);
+  --color-ds-bg-primary: var(--ds-bg-primary);
+  --color-ds-bg-floating: var(--ds-bg-floating);
+  --color-ds-text-normal: var(--ds-text-normal);
+  --color-ds-text-muted: var(--ds-text-muted);
+  --color-ds-text-link: var(--ds-text-link);
+  --color-ds-channel-default: var(--ds-channel-default);
+  --color-ds-channel-icon: var(--ds-channel-icon);
+  --color-ds-interactive-hover: var(--ds-interactive-hover);
+  --color-ds-interactive-active: var(--ds-interactive-active);
+  --color-ds-divider: var(--ds-divider);
+  --color-ds-mention-fg: var(--ds-mention-fg);
 }
 
 @layer base {
@@ -123,3 +180,96 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* =========================================================
+   Reusable scrollbars
+   ========================================================= */
+.messages-scrollbar {
+  scrollbar-width: auto;
+  scrollbar-color: oklch(0.62 0.02 70) oklch(0.92 0.01 70);
+}
+.messages-scrollbar::-webkit-scrollbar { width: 12px; }
+.messages-scrollbar::-webkit-scrollbar-track { background: oklch(0.92 0.01 70); border-radius: 9999px; }
+.messages-scrollbar::-webkit-scrollbar-thumb { background: oklch(0.62 0.02 70); border-radius: 9999px; border: 2px solid oklch(0.92 0.01 70); }
+.dark .messages-scrollbar { scrollbar-color: oklch(0.56 0.02 70) oklch(0.22 0.01 45); }
+.dark .messages-scrollbar::-webkit-scrollbar-track { background: oklch(0.22 0.01 45); }
+.dark .messages-scrollbar::-webkit-scrollbar-thumb { background: oklch(0.56 0.02 70); border-color: oklch(0.22 0.01 45); }
+
+/* Discord-style thin scrollbar (used in channel & member lists) */
+.ds-scrollbar { scrollbar-width: thin; scrollbar-color: var(--ds-bg-tertiary) transparent; }
+.ds-scrollbar::-webkit-scrollbar { width: 8px; height: 8px; }
+.ds-scrollbar::-webkit-scrollbar-track { background: transparent; }
+.ds-scrollbar::-webkit-scrollbar-thumb { background: var(--ds-bg-tertiary); border-radius: 4px; }
+.ds-scrollbar::-webkit-scrollbar-thumb:hover { background: #1A1B1E; }
+
+/* =========================================================
+   Discord-app-only utility helpers
+   ========================================================= */
+.ds-app { color: var(--ds-text-normal); }
+
+.ds-pill-indicator {
+  position: absolute; left: -16px; top: 50%; transform: translateY(-50%);
+  width: 8px; border-radius: 0 4px 4px 0; background: white; transition: height .2s ease;
+}
+
+@keyframes ds-fade-in {
+  from { opacity: 0; transform: translateY(2px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.ds-fade-in { animation: ds-fade-in .12s ease-out; }
+
+@keyframes ds-pulse-ring {
+  0%   { box-shadow: 0 0 0 0 rgba(35, 165, 90, 0.55); }
+  70%  { box-shadow: 0 0 0 8px rgba(35, 165, 90, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(35, 165, 90, 0); }
+}
+.ds-pulse-ring { animation: ds-pulse-ring 1.6s infinite; }
+
+/* =========================================================
+   Markdown / message-content niceties
+   ========================================================= */
+.ds-markdown a { color: var(--ds-text-link); text-decoration: none; }
+.ds-markdown a:hover { text-decoration: underline; }
+.ds-markdown code {
+  background: rgba(0,0,0,.30);
+  padding: 0 4px;
+  border-radius: 4px;
+  font-family: var(--font-mono);
+  font-size: .85em;
+}
+.ds-markdown pre {
+  background: #2B2D31;
+  border: 1px solid #1E1F22;
+  border-radius: 4px;
+  padding: 8px 10px;
+  margin-top: 4px;
+  overflow-x: auto;
+  font-family: var(--font-mono);
+  font-size: .85em;
+}
+.ds-markdown blockquote {
+  border-left: 4px solid var(--ds-divider);
+  padding-left: 10px;
+  color: var(--ds-text-muted);
+  margin: 4px 0;
+}
+.ds-markdown .ds-mention {
+  background: var(--ds-mention-bg);
+  color: var(--ds-mention-fg);
+  padding: 0 2px;
+  border-radius: 4px;
+  font-weight: 500;
+  cursor: pointer;
+}
+.ds-markdown .ds-mention:hover { background: rgba(88,101,242,.30); }
+
+/* Spoilers */
+.ds-spoiler {
+  background: #1E1F22;
+  border-radius: 4px;
+  padding: 0 4px;
+  cursor: pointer;
+  color: transparent;
+  transition: color .12s, background .12s;
+}
+.ds-spoiler.revealed { background: rgba(0,0,0,.30); color: inherit; cursor: text; }

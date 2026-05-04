@@ -7,9 +7,7 @@ export async function POST(req: Request) {
   if (auth.error || !auth.user) return auth.error
 
   const body = (await req.json().catch(() => null)) as PresenceHeartbeatPayload | null
-  if (!body?.groupId) {
-    return NextResponse.json({ error: 'groupId is required' }, { status: 400 })
-  }
+  if (!body?.groupId) return NextResponse.json({ error: 'groupId is required' }, { status: 400 })
 
   const { error } = await auth.supabase.from('discord_presence_events').insert({
     group_id: body.groupId,
@@ -17,8 +15,16 @@ export async function POST(req: Request) {
     user_id: auth.user.id,
     event_type: 'heartbeat',
   })
-
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+
+  // Optional status sync
+  if (body.status) {
+    await auth.supabase
+      .from('profiles')
+      .update({ presence_status: body.status, last_seen: new Date().toISOString() })
+      .eq('id', auth.user.id)
+  }
+
   return NextResponse.json({ ok: true })
 }
 
@@ -31,10 +37,9 @@ export async function GET(req: Request) {
   if (!groupId) return NextResponse.json({ error: 'groupId is required' }, { status: 400 })
 
   const since = new Date(Date.now() - 90 * 1000).toISOString()
-
   const { data, error } = await auth.supabase
     .from('discord_presence_events')
-    .select('user_id, created_at')
+    .select('user_id, channel_id, created_at')
     .eq('group_id', groupId)
     .eq('event_type', 'heartbeat')
     .gte('created_at', since)
@@ -42,12 +47,15 @@ export async function GET(req: Request) {
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
-  const activeByUser = new Map<string, string>()
-  for (const item of data ?? []) {
-    if (!activeByUser.has(item.user_id)) activeByUser.set(item.user_id, item.created_at)
+  const seen = new Set<string>()
+  const onlineUserIds: string[] = []
+  const userChannel: Record<string, string | null> = {}
+  for (const row of data ?? []) {
+    if (!seen.has(row.user_id)) {
+      seen.add(row.user_id)
+      onlineUserIds.push(row.user_id)
+      userChannel[row.user_id] = row.channel_id
+    }
   }
-
-  return NextResponse.json({
-    onlineUserIds: Array.from(activeByUser.keys()),
-  })
+  return NextResponse.json({ onlineUserIds, userChannel })
 }

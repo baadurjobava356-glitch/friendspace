@@ -26,7 +26,7 @@ export async function POST(req: Request) {
   const { AccessToken } = await import('livekit-server-sdk')
   const token = new AccessToken(apiKey, apiSecret, {
     identity: auth.user.id,
-    name: body.displayName || auth.user.email || 'Member',
+    name: body?.displayName || auth.user.email || 'Member',
     ttl: '30m',
   })
 

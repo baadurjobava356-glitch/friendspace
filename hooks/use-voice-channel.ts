@@ -31,7 +31,7 @@ export function useVoiceChannel(currentUserId: string, getDisplayName: (id: stri
   const peerConnectionsRef = useRef<Record<string, RTCPeerConnection>>({})
   const remoteStreamsRef = useRef<Record<string, MediaStream>>({})
   const remoteAudioRefs = useRef<Record<string, HTMLAudioElement>>({})
-  const channelRef = useRef<ReturnType<ReturnType<typeof supabase.channel>> | null>(null)
+  const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null)
   const [screenShareVersion, setScreenShareVersion] = useState(0)
 
   function createPeerConnection(remoteUserId: string, rtcConfig: RTCConfiguration): RTCPeerConnection {
@@ -123,13 +123,15 @@ export function useVoiceChannel(currentUserId: string, getDisplayName: (id: stri
     })
 
     ch.on("presence", { event: "join" }, ({ newPresences }) => {
-      newPresences.forEach((p: VoiceParticipant) => {
+      newPresences.forEach((presence) => {
+        const p = presence as unknown as VoiceParticipant
         if (p.userId !== currentUserId) sendOffer(p.userId, rtcConfig)
       })
     })
 
     ch.on("presence", { event: "leave" }, ({ leftPresences }) => {
-      leftPresences.forEach((p: VoiceParticipant) => {
+      leftPresences.forEach((presence) => {
+        const p = presence as unknown as VoiceParticipant
         peerConnectionsRef.current[p.userId]?.close()
         delete peerConnectionsRef.current[p.userId]
         delete remoteStreamsRef.current[p.userId]

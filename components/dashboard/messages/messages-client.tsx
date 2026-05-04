@@ -93,6 +93,7 @@ export function MessagesClient({
   const initialized = useRef(false)
   const autoCallTriggeredRef = useRef(false)
   const incomingCallTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const ringtoneAudioRef = useRef<HTMLAudioElement | null>(null)
 
   useEffect(() => {
     if (!initialized.current) {
@@ -326,6 +327,7 @@ export function MessagesClient({
     setSendError(null)
     const content = newMessage.trim()
     const tempId = `temp-${Date.now()}`
+    const replyTargetId = replyingTo?.id ?? null
     let uploadedPath: string | null = null
     let uploadedName: string | null = null
 
@@ -352,7 +354,7 @@ export function MessagesClient({
       message_type: messageType,
       file_url: uploadedPath,
       file_name: uploadedName,
-      reply_to_id: replyingTo?.id ?? null,
+      reply_to_id: replyTargetId,
       is_edited: false,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
@@ -370,7 +372,7 @@ export function MessagesClient({
         messageType,
         fileUrl: uploadedPath,
         fileName: uploadedName,
-        replyToId: replyingTo?.id ?? null,
+        replyToId: replyTargetId,
       }),
     })
     const json = await response.json().catch(() => null) as { message?: Message } | null
@@ -378,7 +380,11 @@ export function MessagesClient({
     const error = response.ok ? null : new Error("Failed to send")
 
     if (!error && data) {
-      replaceOptimisticMessage(tempId, data)
+      // Keep reply linkage even if backend response omits reply_to_id.
+      const normalized = replyTargetId && !data.reply_to_id
+        ? { ...data, reply_to_id: replyTargetId }
+        : data
+      replaceOptimisticMessage(tempId, normalized)
       updateConversationTimestamp(selectedConversation.id)
     } else {
       removeMessage(tempId)
@@ -411,6 +417,14 @@ export function MessagesClient({
 
   useEffect(() => {
     if (!incomingCall) return
+    if (!ringtoneAudioRef.current) {
+      ringtoneAudioRef.current = new Audio("/call-ringtone.mp3")
+      ringtoneAudioRef.current.loop = true
+      ringtoneAudioRef.current.preload = "auto"
+    }
+    ringtoneAudioRef.current.currentTime = 0
+    void ringtoneAudioRef.current.play().catch(() => {})
+
     if (incomingCallTimeoutRef.current) clearTimeout(incomingCallTimeoutRef.current)
     incomingCallTimeoutRef.current = setTimeout(() => {
       setIncomingCall(null)
@@ -418,8 +432,22 @@ export function MessagesClient({
     }, 30000)
     return () => {
       if (incomingCallTimeoutRef.current) clearTimeout(incomingCallTimeoutRef.current)
+      if (ringtoneAudioRef.current) {
+        ringtoneAudioRef.current.pause()
+        ringtoneAudioRef.current.currentTime = 0
+      }
     }
   }, [incomingCall])
+
+  useEffect(() => {
+    return () => {
+      if (ringtoneAudioRef.current) {
+        ringtoneAudioRef.current.pause()
+        ringtoneAudioRef.current.currentTime = 0
+        ringtoneAudioRef.current = null
+      }
+    }
+  }, [])
 
   async function acceptIncomingCall() {
     if (!incomingCall) return
@@ -747,7 +775,7 @@ export function MessagesClient({
 
               <div
                 ref={messagesViewportRef}
-                className="flex-1 overflow-y-scroll px-4 py-2 pr-3"
+                className="messages-scrollbar flex-1 overflow-y-scroll px-4 py-2 pr-3"
                 style={{ scrollbarGutter: "stable" }}
               >
                 <div className="space-y-0.5 pb-2 min-h-full">
@@ -786,16 +814,20 @@ export function MessagesClient({
                             isOwn ? "bg-primary text-primary-foreground rounded-br-sm" : "bg-muted rounded-bl-sm",
                             message.id.startsWith("temp-") && "opacity-60")}
                           >
-                            {repliedMessage && (
+                            {message.reply_to_id && (
                               <div className={cn(
                                 "mb-2 rounded-lg border px-2 py-1 text-xs",
                                 isOwn ? "border-primary-foreground/30 bg-primary-foreground/10" : "border-border bg-background/60",
                               )}>
                                 <p className="truncate opacity-80">
-                                  Replying to {repliedMessage.sender_id === currentUserId ? "yourself" : (getProfileById(repliedMessage.sender_id)?.display_name || "message")}
+                                  Replying to {repliedMessage
+                                    ? (repliedMessage.sender_id === currentUserId ? "yourself" : (getProfileById(repliedMessage.sender_id)?.display_name || "message"))
+                                    : "message"}
                                 </p>
                                 <p className="truncate">
-                                  {repliedMessage.content || repliedMessage.file_name || "Attachment"}
+                                  {repliedMessage
+                                    ? (repliedMessage.content || repliedMessage.file_name || "Attachment")
+                                    : "Original message"}
                                 </p>
                               </div>
                             )}
