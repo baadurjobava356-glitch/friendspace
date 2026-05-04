@@ -1,69 +1,95 @@
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 
+function getSupabaseCredentials() {
+  const url =
+    process.env.NEXT_PUBLIC_SUPABASE_URL ??
+    process.env.SUPABASE_URL ??
+    ''
+  const key =
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ??
+    process.env.SUPABASE_ANON_KEY ??
+    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ??
+    process.env.SUPABASE_PUBLISHABLE_KEY ??
+    ''
+  return { url, key }
+}
+
+/**
+ * Refreshes the Supabase session on each request. Runs on the Edge runtime on Vercel.
+ *
+ * If env vars are missing or anything throws, we fall back to a plain passthrough
+ * response so the site does not return MIDDLEWARE_INVOCATION_FAILED (500).
+ */
 export async function updateSession(request: NextRequest) {
+  const { url, key } = getSupabaseCredentials()
+  if (!url || !key) {
+    console.error(
+      '[middleware] Missing Supabase URL or anon/publishable key. Set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY on Vercel.',
+    )
+    return NextResponse.next({ request })
+  }
+
   let supabaseResponse = NextResponse.next({
     request,
   })
 
-  // With Fluid compute, don't put this client in a global environment
-  // variable. Always create a new one on each request.
-  const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
+  try {
+    const supabase = createServerClient(url, key, {
       cookies: {
         getAll() {
           return request.cookies.getAll()
         },
-        setAll(cookiesToSet) {
-          cookiesToSet.forEach(({ name, value }) =>
-            request.cookies.set(name, value),
-          )
+        setAll(cookiesToSet, cacheHeaders) {
+          // 1) Mirror cookie mutations on the request (so Server Components see the session)
+          for (const { name, value } of cookiesToSet) {
+            try {
+              if (!value) request.cookies.delete(name)
+              else request.cookies.set(name, value)
+            } catch (e) {
+              console.error('[middleware] request cookie update failed', name, e)
+            }
+          }
+
+          // 2) Fresh response carrying Set-Cookie + cache headers (CDN session leak prevention)
           supabaseResponse = NextResponse.next({
             request,
           })
-          cookiesToSet.forEach(({ name, value, options }) =>
-            supabaseResponse.cookies.set(name, value, options),
-          )
+
+          for (const { name, value, options } of cookiesToSet) {
+            try {
+              if (!value) supabaseResponse.cookies.delete(name)
+              else supabaseResponse.cookies.set(name, value, options)
+            } catch (e) {
+              console.error('[middleware] response cookie update failed', name, e)
+            }
+          }
+
+          if (cacheHeaders && typeof cacheHeaders === 'object') {
+            for (const [headerName, headerValue] of Object.entries(cacheHeaders)) {
+              if (typeof headerValue === 'string') {
+                supabaseResponse.headers.set(headerName, headerValue)
+              }
+            }
+          }
         },
       },
-    },
-  )
+    })
 
-  // Do not run code between createServerClient and
-  // supabase.auth.getUser(). A simple mistake could make it very hard to debug
-  // issues with users being randomly logged out.
+    // IMPORTANT: Do not run code between createServerClient and getUser() (Supabase)
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
 
-  // IMPORTANT: If you remove getUser() and you use server-side rendering
-  // with the Supabase client, your users may be randomly logged out.
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-
-  if (
-    // if the user is not logged in and the app path, in this case, /protected, is accessed, redirect to the login page
-    request.nextUrl.pathname.startsWith('/protected') &&
-    !user
-  ) {
-    // no user, potentially respond by redirecting the user to the login page
-    const url = request.nextUrl.clone()
-    url.pathname = '/auth/login'
-    return NextResponse.redirect(url)
+    if (request.nextUrl.pathname.startsWith('/protected') && !user) {
+      const url = request.nextUrl.clone()
+      url.pathname = '/auth/login'
+      return NextResponse.redirect(url)
+    }
+  } catch (e) {
+    console.error('[middleware] updateSession error', e)
+    return NextResponse.next({ request })
   }
-
-  // IMPORTANT: You *must* return the supabaseResponse object as it is.
-  // If you're creating a new response object with NextResponse.next() make sure to:
-  // 1. Pass the request in it, like so:
-  //    const myNewResponse = NextResponse.next({ request })
-  // 2. Copy over the cookies, like so:
-  //    myNewResponse.cookies.setAll(supabaseResponse.cookies.getAll())
-  // 3. Change the myNewResponse object to fit your needs, but avoid changing
-  //    the cookies!
-  // 4. Finally:
-  //    return myNewResponse
-  // If this is not done, you may be causing the browser and server to go out
-  // of sync and terminate the user's session prematurely!
 
   return supabaseResponse
 }
