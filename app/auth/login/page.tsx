@@ -1,7 +1,6 @@
 "use client"
 
-import { useState } from "react"
-import { useRouter } from "next/navigation"
+import { useEffect, useState } from "react"
 import Link from "next/link"
 import { createClient } from "@/lib/supabase/client"
 import { Button } from "@/components/ui/button"
@@ -16,8 +15,22 @@ export default function LoginPage() {
   const [password, setPassword] = useState("")
   const [error, setError] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(false)
-  const router = useRouter()
   const supabase = createClient()
+
+  useEffect(() => {
+    let mounted = true
+
+    // If a valid session already exists, skip this screen.
+    supabase.auth.getSession().then(({ data }) => {
+      if (mounted && data.session) {
+        window.location.replace("/discord")
+      }
+    })
+
+    return () => {
+      mounted = false
+    }
+  }, [supabase.auth])
 
   async function handleLogin(e: React.FormEvent) {
     e.preventDefault()
@@ -35,8 +48,8 @@ export default function LoginPage() {
       return
     }
 
-    router.push("/dashboard")
-    router.refresh()
+    // Force a full navigation so Server Components read fresh auth cookies/session.
+    window.location.assign("/discord")
   }
 
   return (
