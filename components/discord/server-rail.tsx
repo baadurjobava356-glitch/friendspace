@@ -1,7 +1,7 @@
 "use client"
 
 import * as React from 'react'
-import { Plus, Compass, MessageSquare, Home, Download } from 'lucide-react'
+import { Plus, Compass, MessageSquare, Download } from 'lucide-react'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { avatarColor, avatarInitials } from '@/lib/mini-discord/colors'
 import { cn } from '@/lib/utils'
@@ -35,11 +35,11 @@ function ServerIcon({
     <Tooltip delayDuration={120}>
       <TooltipTrigger asChild>
         <div className="relative">
-          {/* white pill indicator on the left */}
+          {/* coral accent pill indicator on the left (Stoat-style) */}
           <div
-            className="absolute left-0 top-1/2 -translate-y-1/2 w-1 bg-white rounded-r-full transition-all"
+            className="absolute left-0 top-1/2 -translate-y-1/2 w-1 bg-ds-blurple rounded-r-full transition-all"
             style={{
-              height: active ? 40 : unread ? 8 : 0,
+              height: active ? 32 : unread ? 8 : 0,
               opacity: active || unread ? 1 : 0,
             }}
           />
@@ -47,7 +47,8 @@ function ServerIcon({
             onClick={onClick}
             className={cn(
               'mx-3 w-12 h-12 flex items-center justify-center text-white font-semibold transition-all overflow-hidden',
-              active ? 'rounded-2xl' : 'rounded-3xl hover:rounded-2xl',
+              // Stoat squircle: stays softly rounded, tightens on active/hover
+              active ? 'rounded-[18px] ring-2 ring-ds-blurple/60 shadow-lg' : 'rounded-[22px] hover:rounded-[18px]',
             )}
             style={{ background: bg, fontSize: 16 }}
           >
@@ -89,14 +90,14 @@ function PillButton({
       <TooltipTrigger asChild>
         <div className="relative">
           <div
-            className="absolute left-0 top-1/2 -translate-y-1/2 w-1 bg-white rounded-r-full transition-all"
-            style={{ height: active ? 40 : 0, opacity: active ? 1 : 0 }}
+            className="absolute left-0 top-1/2 -translate-y-1/2 w-1 bg-ds-blurple rounded-r-full transition-all"
+            style={{ height: active ? 32 : 0, opacity: active ? 1 : 0 }}
           />
           <button
             onClick={onClick}
             className={cn(
-              'mx-3 w-12 h-12 rounded-3xl hover:rounded-2xl transition-all flex items-center justify-center bg-ds-bg-primary',
-              active && 'rounded-2xl bg-ds-blurple text-white',
+              'mx-3 w-12 h-12 rounded-[22px] hover:rounded-[18px] transition-all flex items-center justify-center bg-ds-bg-secondary-alt',
+              active && 'rounded-[18px] bg-ds-blurple text-white',
               !active && colorClass,
             )}
           >
@@ -152,21 +153,7 @@ export function ServerRail({
 
         <Tooltip delayDuration={120}>
           <TooltipTrigger asChild>
-            <a
-              href="/dashboard"
-              className="mx-3 w-12 h-12 rounded-3xl hover:rounded-2xl transition-all flex items-center justify-center bg-ds-bg-primary text-ds-channel-default hover:bg-ds-blurple hover:text-white"
-            >
-              <Home className="w-6 h-6" />
-            </a>
-          </TooltipTrigger>
-          <TooltipContent side="right" className="bg-black text-white border-none">
-            Open Dashboard
-          </TooltipContent>
-        </Tooltip>
-
-        <Tooltip delayDuration={120}>
-          <TooltipTrigger asChild>
-            <button className="mx-3 w-12 h-12 rounded-3xl hover:rounded-2xl transition-all flex items-center justify-center bg-ds-bg-primary text-ds-channel-default hover:bg-ds-blurple hover:text-white">
+            <button className="mx-3 w-12 h-12 rounded-[22px] hover:rounded-[18px] transition-all flex items-center justify-center bg-ds-bg-secondary-alt text-ds-channel-default hover:bg-ds-blurple hover:text-white">
               <Download className="w-6 h-6" />
             </button>
           </TooltipTrigger>

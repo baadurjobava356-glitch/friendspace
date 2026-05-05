@@ -31,9 +31,9 @@ export function JoinServerDialog({ open, onOpenChange, onJoin }: Props) {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="bg-ds-bg-secondary border-black/30 text-ds-text-normal sm:max-w-[440px]">
+      <DialogContent className="bg-ds-bg-secondary border-ds-divider/60 text-ds-text-normal sm:max-w-[440px] rounded-2xl shadow-2xl">
         <DialogHeader>
-          <DialogTitle className="text-xl font-extrabold text-ds-interactive-active">Join a Server</DialogTitle>
+          <DialogTitle className="text-[18px] font-bold text-ds-interactive-active tracking-tight">Join a Server</DialogTitle>
         </DialogHeader>
         <p className="text-sm text-ds-text-muted">
           Enter an invite below to join an existing server. Codes look like
@@ -43,13 +43,13 @@ export function JoinServerDialog({ open, onOpenChange, onJoin }: Props) {
           value={code}
           onChange={(e) => setCode(e.target.value)}
           placeholder="Invite code"
-          className="bg-ds-bg-tertiary border-none text-ds-text-normal h-11"
+          className="bg-ds-bg-tertiary border border-ds-divider/40 focus-visible:border-ds-blurple/60 text-ds-text-normal h-11 rounded-lg"
           onKeyDown={(e) => { if (e.key === 'Enter') submit() }}
         />
         {error && <p className="text-sm text-ds-dnd">{error}</p>}
         <div className="flex justify-end gap-2">
-          <Button variant="ghost" onClick={() => onOpenChange(false)}>Back</Button>
-          <Button onClick={submit} disabled={!code.trim() || busy} className="bg-ds-blurple hover:bg-ds-blurple-hover text-white">
+          <Button variant="ghost" onClick={() => onOpenChange(false)} className="text-ds-text-muted hover:text-ds-interactive-active">Back</Button>
+          <Button onClick={submit} disabled={!code.trim() || busy} className="bg-ds-blurple hover:bg-ds-blurple-hover text-white rounded-lg font-semibold">
             {busy ? 'Joining...' : 'Join Server'}
           </Button>
         </div>

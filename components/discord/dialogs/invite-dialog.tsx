@@ -55,9 +55,9 @@ export function InviteDialog({ open, onOpenChange, groupId, groupName }: Props) 
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="bg-ds-bg-secondary border-black/30 text-ds-text-normal sm:max-w-[480px]">
+      <DialogContent className="bg-ds-bg-secondary border-ds-divider/60 text-ds-text-normal sm:max-w-[480px] rounded-2xl shadow-2xl">
         <DialogHeader>
-          <DialogTitle className="text-xl font-extrabold text-ds-interactive-active">
+          <DialogTitle className="text-[18px] font-bold text-ds-interactive-active tracking-tight">
             Invite friends to {groupName}
           </DialogTitle>
         </DialogHeader>

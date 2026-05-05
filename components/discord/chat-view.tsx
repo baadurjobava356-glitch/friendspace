@@ -116,17 +116,17 @@ export function ChatView({
   return (
     <TooltipProvider delayDuration={120}>
       <div className="flex-1 flex flex-col min-w-0 bg-ds-bg-primary">
-        <header className="h-12 px-4 flex items-center gap-3 border-b border-black/40 shadow-sm">
+        <header className="h-12 px-4 flex items-center gap-3 border-b border-ds-divider/60">
           {channel.kind === 'voice' ? (
-            <Volume2 className="w-6 h-6 text-ds-channel-icon shrink-0" />
+            <Volume2 className="w-5 h-5 text-ds-channel-icon shrink-0" />
           ) : (
-            <Hash className="w-6 h-6 text-ds-channel-icon shrink-0" />
+            <Hash className="w-5 h-5 text-ds-channel-icon shrink-0" />
           )}
-          <span className="font-bold text-[16px] text-ds-interactive-active truncate">{channel.name}</span>
+          <span className="font-semibold text-[15px] text-ds-interactive-active truncate tracking-tight">{channel.name}</span>
           {channel.topic && (
             <>
               <span className="w-px h-5 bg-ds-divider" />
-              <span className="text-[13px] text-ds-channel-default truncate">{channel.topic}</span>
+              <span className="text-[13px] text-ds-text-muted truncate">{channel.topic}</span>
             </>
           )}
 
@@ -282,12 +282,14 @@ export function ChatView({
 
 function ChannelHero({ channel }: { channel: MiniChannel }) {
   return (
-    <div className="px-4 pt-8 pb-4">
-      <div className="w-16 h-16 rounded-full bg-ds-blurple/20 flex items-center justify-center mb-4">
-        <Hash className="w-9 h-9 text-ds-blurple" />
+    <div className="px-4 pt-10 pb-6">
+      <div className="w-[72px] h-[72px] rounded-2xl bg-ds-blurple/15 flex items-center justify-center mb-5 ring-1 ring-ds-blurple/25">
+        <Hash className="w-10 h-10 text-ds-blurple" />
       </div>
-      <h2 className="text-[28px] font-extrabold text-ds-interactive-active">Welcome to #{channel.name}!</h2>
-      <p className="text-ds-text-muted">
+      <h2 className="text-[26px] font-bold text-ds-interactive-active tracking-tight">
+        Welcome to #{channel.name}
+      </h2>
+      <p className="text-ds-text-muted mt-1.5 text-[15px] leading-relaxed">
         {channel.topic ? channel.topic : `This is the start of the #${channel.name} channel.`}
       </p>
     </div>

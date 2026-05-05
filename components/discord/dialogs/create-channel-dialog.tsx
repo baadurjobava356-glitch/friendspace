@@ -45,9 +45,9 @@ export function CreateChannelDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="bg-ds-bg-secondary border-black/30 text-ds-text-normal sm:max-w-[460px]">
+      <DialogContent className="bg-ds-bg-secondary border-ds-divider/60 text-ds-text-normal sm:max-w-[460px] rounded-2xl shadow-2xl">
         <DialogHeader>
-          <DialogTitle className="text-xl font-extrabold text-ds-interactive-active">Create Channel</DialogTitle>
+          <DialogTitle className="text-[18px] font-bold text-ds-interactive-active tracking-tight">Create Channel</DialogTitle>
         </DialogHeader>
         <div>
           <p className="text-[11px] uppercase tracking-wide font-bold text-ds-text-muted mb-2">Channel Type</p>
@@ -85,8 +85,8 @@ export function CreateChannelDialog({
           </label>
         )}
         <div className="flex justify-end gap-2 pt-2">
-          <Button variant="ghost" onClick={() => onOpenChange(false)}>Cancel</Button>
-          <Button onClick={submit} disabled={!name.trim() || busy} className="bg-ds-blurple hover:bg-ds-blurple-hover text-white">
+          <Button variant="ghost" onClick={() => onOpenChange(false)} className="text-ds-text-muted hover:text-ds-interactive-active">Cancel</Button>
+          <Button onClick={submit} disabled={!name.trim() || busy} className="bg-ds-blurple hover:bg-ds-blurple-hover text-white rounded-lg font-semibold">
             {busy ? 'Creating...' : 'Create Channel'}
           </Button>
         </div>
@@ -107,8 +107,8 @@ function KindOption({ Icon, title, description, active, onClick }: {
       type="button"
       onClick={onClick}
       className={cn(
-        'w-full text-left px-3 py-3 rounded-md flex items-center gap-3 transition-colors',
-        active ? 'bg-ds-bg-modifier-selected ring-2 ring-ds-blurple' : 'bg-ds-bg-secondary-alt hover:bg-ds-bg-modifier-hover',
+        'w-full text-left px-3 py-3 rounded-xl flex items-center gap-3 transition-all',
+        active ? 'bg-ds-bg-modifier-selected ring-2 ring-ds-blurple/70' : 'bg-ds-bg-secondary-alt hover:bg-ds-bg-modifier-hover hover:ring-1 hover:ring-ds-blurple/30',
       )}
     >
       <Icon className="w-6 h-6 text-ds-channel-icon" />

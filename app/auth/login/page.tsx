@@ -53,22 +53,22 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background p-4">
+    <div className="min-h-screen flex items-center justify-center bg-ds-bg-tertiary p-4">
       <div className="w-full max-w-md">
         <div className="flex flex-col items-center mb-8">
-          <div className="flex items-center gap-2 mb-2">
-            <div className="w-10 h-10 rounded-xl bg-primary flex items-center justify-center">
-              <Users className="w-5 h-5 text-primary-foreground" />
+          <div className="flex items-center gap-3 mb-2">
+            <div className="w-11 h-11 rounded-2xl bg-ds-blurple flex items-center justify-center shadow-lg shadow-ds-blurple/30">
+              <Users className="w-5 h-5 text-white" />
             </div>
-            <span className="text-2xl font-bold text-foreground">FriendSpace</span>
+            <span className="text-2xl font-bold text-ds-interactive-active tracking-tight">FriendSpace</span>
           </div>
-          <p className="text-muted-foreground text-center">Welcome back to your group</p>
+          <p className="text-ds-text-muted text-center">Welcome back</p>
         </div>
 
-        <Card className="border-border shadow-lg">
+        <Card className="bg-ds-bg-secondary border border-ds-divider/60 shadow-2xl rounded-2xl">
           <CardHeader className="space-y-1">
-            <CardTitle className="text-2xl text-center">Sign in</CardTitle>
-            <CardDescription className="text-center">
+            <CardTitle className="text-[22px] text-center text-ds-interactive-active tracking-tight">Sign in</CardTitle>
+            <CardDescription className="text-center text-ds-text-muted">
               Enter your credentials to access your account
             </CardDescription>
           </CardHeader>

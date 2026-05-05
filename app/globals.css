@@ -44,33 +44,38 @@
   --sidebar-border: oklch(0.90 0.01 75);
   --sidebar-ring: oklch(0.55 0.22 270);
 
-  /* Discord-specific palette tokens (used by chat shell only) */
-  --ds-blurple:        #5865F2;
-  --ds-blurple-hover:  #4752C4;
-  --ds-online:         #23A55A;
-  --ds-idle:           #F0B232;
-  --ds-dnd:            #F23F43;
+  /* ==========================================================
+     Stoat-inspired palette (Revolt heritage). Mapped onto the
+     existing --ds-* token names so every component picks it up
+     without churn. Warmer + more neutral than Discord blurple,
+     with a coral brand accent.
+     ========================================================== */
+  --ds-blurple:        #FD6671;        /* brand: stoat coral */
+  --ds-blurple-hover:  #FF7B86;
+  --ds-online:         #3ABF7E;
+  --ds-idle:           #F39F00;
+  --ds-dnd:            #F84A53;
   --ds-offline:        #80848E;
-  --ds-streaming:      #593695;
-  --ds-bg-tertiary:    #1E1F22;
-  --ds-bg-secondary:   #2B2D31;
-  --ds-bg-secondary-alt:#232428;
-  --ds-bg-primary:     #313338;
-  --ds-bg-floating:    #111214;
-  --ds-bg-modifier-hover:  rgba(78, 80, 88, .16);
-  --ds-bg-modifier-active: rgba(78, 80, 88, .24);
-  --ds-bg-modifier-selected: rgba(78, 80, 88, .32);
-  --ds-text-normal:    #DBDEE1;
-  --ds-text-muted:     #949BA4;
-  --ds-text-link:      #00A8FC;
-  --ds-channel-default:#80848E;
-  --ds-channel-icon:   #80848E;
-  --ds-interactive-hover: #DBDEE1;
+  --ds-streaming:      #C77DFF;
+  --ds-bg-tertiary:    #14141A;        /* server rail */
+  --ds-bg-secondary:   #1B1B23;        /* channel sidebar */
+  --ds-bg-secondary-alt:#181820;
+  --ds-bg-primary:     #232330;        /* main chat surface */
+  --ds-bg-floating:    #0E0E14;        /* tooltips, popovers */
+  --ds-bg-modifier-hover:    rgba(255, 255, 255, .04);
+  --ds-bg-modifier-active:   rgba(255, 255, 255, .07);
+  --ds-bg-modifier-selected: rgba(255, 255, 255, .10);
+  --ds-text-normal:    #ECECEE;
+  --ds-text-muted:     #8E8E96;
+  --ds-text-link:      #57B7FF;
+  --ds-channel-default:#7A7A82;
+  --ds-channel-icon:   #7A7A82;
+  --ds-interactive-hover: #DDDDE0;
   --ds-interactive-active: #FFFFFF;
-  --ds-divider:        #3F4147;
-  --ds-mention-fg:     #C9CDFB;
-  --ds-mention-bg:     rgba(88, 101, 242, .15);
-  --ds-mention-bar:    rgba(88, 101, 242, .60);
+  --ds-divider:        #2A2A35;
+  --ds-mention-fg:     #FFB4BA;
+  --ds-mention-bg:     rgba(253, 102, 113, .14);
+  --ds-mention-bar:    rgba(253, 102, 113, .65);
 }
 
 .dark {
@@ -209,7 +214,14 @@
 
 .ds-pill-indicator {
   position: absolute; left: -16px; top: 50%; transform: translateY(-50%);
-  width: 8px; border-radius: 0 4px 4px 0; background: white; transition: height .2s ease;
+  width: 4px; border-radius: 0 4px 4px 0; background: var(--ds-blurple); transition: height .2s ease;
+}
+
+/* Stoat-style soft surface for chat rows / cards */
+.st-surface {
+  background: var(--ds-bg-primary);
+  border: 1px solid var(--ds-divider);
+  border-radius: 12px;
 }
 
 @keyframes ds-fade-in {
@@ -219,9 +231,9 @@
 .ds-fade-in { animation: ds-fade-in .12s ease-out; }
 
 @keyframes ds-pulse-ring {
-  0%   { box-shadow: 0 0 0 0 rgba(35, 165, 90, 0.55); }
-  70%  { box-shadow: 0 0 0 8px rgba(35, 165, 90, 0); }
-  100% { box-shadow: 0 0 0 0 rgba(35, 165, 90, 0); }
+  0%   { box-shadow: 0 0 0 0 rgba(58, 191, 126, 0.55); }
+  70%  { box-shadow: 0 0 0 8px rgba(58, 191, 126, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(58, 191, 126, 0); }
 }
 .ds-pulse-ring { animation: ds-pulse-ring 1.6s infinite; }
 

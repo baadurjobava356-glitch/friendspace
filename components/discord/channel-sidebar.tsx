@@ -69,14 +69,14 @@ export function ChannelSidebar({
   return (
     <TooltipProvider delayDuration={120}>
       <div className="flex-1 flex flex-col min-h-0 bg-ds-bg-secondary">
-        {/* Server header */}
+        {/* Server header — Stoat-style: tighter, soft border */}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <button className="h-12 px-4 flex items-center justify-between border-b border-black/40 shadow-sm hover:bg-ds-bg-modifier-hover transition-colors">
-              <span className="text-[15px] font-bold text-ds-interactive-active truncate">
+            <button className="h-12 px-4 flex items-center justify-between border-b border-ds-divider/60 hover:bg-ds-bg-modifier-hover transition-colors">
+              <span className="text-[14px] font-semibold text-ds-interactive-active tracking-tight truncate">
                 {group.name}
               </span>
-              <ChevronDown className="w-4 h-4 text-ds-interactive-active shrink-0" />
+              <ChevronDown className="w-4 h-4 text-ds-text-muted shrink-0" />
             </button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="start" className="w-64 bg-ds-bg-floating border-black/30 text-ds-text-normal">
@@ -217,14 +217,14 @@ function ChannelRow({
           <div
             onClick={onSelect}
             className={cn(
-              'group rounded h-8 px-2 flex items-center gap-1.5 cursor-pointer mt-0.5',
+              'group rounded-md h-8 px-2 flex items-center gap-1.5 cursor-pointer mt-0.5 transition-colors',
               active
                 ? 'bg-ds-bg-modifier-selected text-ds-interactive-active'
                 : 'text-ds-channel-default hover:bg-ds-bg-modifier-hover hover:text-ds-interactive-hover',
             )}
           >
-            <Icon className="w-5 h-5 text-ds-channel-icon shrink-0" />
-            <span className="text-[15px] font-medium truncate flex-1">{channel.name}</span>
+            <Icon className="w-[18px] h-[18px] text-ds-channel-icon shrink-0" />
+            <span className="text-[14px] font-medium truncate flex-1">{channel.name}</span>
 
             <div className="hidden group-hover:flex items-center gap-1">
               {channel.kind === 'text' && (
