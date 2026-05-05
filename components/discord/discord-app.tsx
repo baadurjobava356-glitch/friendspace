@@ -355,7 +355,7 @@ export function DiscordApp({
       } else {
         toast.error(json?.error ?? 'Could not join with that invite')
       }
-      router.replace('/discord')
+      router.replace('/')
     })()
   }, [inviteCode, refreshGroups, router])
 

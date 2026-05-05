@@ -24,24 +24,17 @@ export default function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="en" className="bg-background" suppressHydrationWarning>
+    <html lang="en" className="dark min-h-screen bg-ds-bg-tertiary" suppressHydrationWarning>
       <head>
-        {/* Prevent flash of wrong theme */}
         <Script id="theme-init" strategy="beforeInteractive">{`
           (function() {
             try {
-              var theme = localStorage.getItem('theme');
-              var prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-              if (theme === 'dark' || (!theme && prefersDark)) {
-                document.documentElement.classList.add('dark');
-              } else {
-                document.documentElement.classList.remove('dark');
-              }
+              document.documentElement.classList.add('dark');
             } catch(e) {}
           })();
         `}</Script>
       </head>
-      <body className="font-sans antialiased">
+      <body className="font-sans antialiased min-h-screen">
         {children}
       </body>
     </html>

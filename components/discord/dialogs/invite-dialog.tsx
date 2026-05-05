@@ -47,7 +47,7 @@ export function InviteDialog({ open, onOpenChange, groupId, groupName }: Props) 
   }
 
   async function copy(code: string) {
-    const url = `${window.location.origin}/discord?invite=${code}`
+    const url = `${window.location.origin}/?invite=${code}`
     try { await navigator.clipboard.writeText(url) } catch {}
     setCopiedCode(code)
     setTimeout(() => setCopiedCode((c) => (c === code ? null : c)), 1500)
@@ -69,7 +69,7 @@ export function InviteDialog({ open, onOpenChange, groupId, groupName }: Props) 
           <div className="flex items-center gap-2 bg-ds-bg-tertiary rounded-md p-2">
             <Input
               readOnly
-              value={`${typeof window !== 'undefined' ? window.location.origin : ''}/discord?invite=${invites[0].code}`}
+              value={`${typeof window !== 'undefined' ? window.location.origin : ''}/?invite=${invites[0].code}`}
               className="bg-transparent border-none text-ds-text-normal flex-1"
             />
             <Button

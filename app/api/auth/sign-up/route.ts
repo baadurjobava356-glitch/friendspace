@@ -22,7 +22,7 @@ export async function POST(req: Request) {
 
     const admin = createAdminClient()
     const origin = new URL(req.url).origin
-    const redirectTo = `${origin}/auth/confirm?next=/dashboard`
+    const redirectTo = `${origin}/auth/confirm?next=/discord`
 
     const { data, error } = await admin.auth.admin.generateLink({
       type: "signup",
